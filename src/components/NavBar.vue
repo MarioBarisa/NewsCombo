@@ -35,6 +35,9 @@ import FeedSelect from './FeedSelect.vue';
     <li>
       <RouterLink to="/settings" class="justify-between"> Postavke </RouterLink>
     </li>
+    <li>
+      <RouterLink to="/settings/feeds" class="justify-between"> Postavke feed-ova </RouterLink>
+    </li>
     <li><a>Logout</a></li>
   </ul>
 </div>
