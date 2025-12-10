@@ -15,7 +15,7 @@ import FeedSelect from './FeedSelect.vue';
 
 <div class="navbar bg-base-100 shadow-sm">
   <div class="navbar-start">
-    <RouterLink to="/" class="btn btn-soft btn-xs sm:btn-sm md:btn-md lg:btn-lg xl:btn-xl btn-primary text-2xl font-italic">NewsCombo</RouterLink>
+    <RouterLink to="/" class="btn btn-soft btn-xs sm:btn-sm md:btn-md lg:btn-lg xl:btn-xl btn-primary text-2xl italic">NewsCombo</RouterLink>
   </div>
 
 <div class="dropdown dropdown-end ml-auto">
