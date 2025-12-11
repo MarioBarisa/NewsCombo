@@ -1,83 +1,85 @@
-<script setup>
-    import { ref, computed, onMounted } from 'vue'
-    
-    const props = defineProps({
-      news: {
-        type: Object,
-        required: true
-      }
-    })
-    
-    const emit = defineEmits(['like', 'dislike'])
-    
-    const isLiked = ref(false)
-    const isDisliked = ref(false)
-    const imageError = ref(false)
-    
-    const imageUrl = computed(() => {
-      if (imageError.value) return null
-      
-      const possibleImages = [
-        props.news.enclosure?.link,
-        props.news.thumbnail,
-        props.news.image,
-        props.news.media?.thumbnail?.url,
-        props.news['media:thumbnail']?.$?.url
-      ].filter(Boolean)
-      
-      return possibleImages[0] || null
-    })
-    
-    const cleanDescription = computed(() => {
-      if (!props.news.description) return 'Nema dostupnog opisa.'
-        const tmp = document.createElement('div')
-      // daj news description, makni html tagove
-      tmp.innerHTML = props.news.description
-      const text = tmp.textContent || tmp.innerText || ''
-      return text.substring(0, 150) + (text.length > 150 ? '...' : '')
-    })
-    
-    const toggleLike = () => {
-      if (isDisliked.value) {
-        isDisliked.value = false
-      }
-      isLiked.value = !isLiked.value
-      emit('like', props.news.link, isLiked.value)
+ <script setup>
+  import { ref, computed, onMounted } from 'vue'
+  
+  const props = defineProps({
+    news: {
+      type: Object,
+      required: true
     }
+  })
+  
+  const emit = defineEmits(['like', 'dislike', 'open-modal'])
+  
+  const isLiked = ref(false)
+  const isDisliked = ref(false)
+  const imageError = ref(false)
+  
+  const imageUrl = computed(() => {
+    if (imageError.value) return null
     
-    const toggleDislike = () => {
-      if (isLiked.value) {
-        isLiked.value = false
-      }
-      isDisliked.value = !isDisliked.value
-      emit('dislike', props.news.link, isDisliked.value)
+    const possibleImages = [
+      props.news.enclosure?.link,
+      props.news.thumbnail,
+      props.news.image,
+      props.news.media?.thumbnail?.url,
+      props.news['media:thumbnail']?.$?.url
+    ].filter(Boolean)
+    
+    return possibleImages[0] || null
+  })
+  
+  const cleanDescription = computed(() => {
+    if (!props.news.description) return 'Nema opisa dostupnog.'
+    const tmp = document.createElement('div')
+    tmp.innerHTML = props.news.description
+    const text = tmp.textContent || tmp.innerText || ''
+    return text.substring(0, 150) + (text.length > 150 ? '...' : '')
+  })
+  
+  const openNewsModal = () => {
+    emit('open-modal', props.news)
+  }
+  
+  const toggleLike = () => {
+    if (isDisliked.value) {
+      isDisliked.value = false
     }
-    
-    const handleImageError = () => {
-      imageError.value = true
+    isLiked.value = !isLiked.value
+    emit('like', props.news.link, isLiked.value)
+  }
+  
+  const toggleDislike = () => {
+    if (isLiked.value) {
+      isLiked.value = false
     }
-    
-    onMounted(() => {
-      try {
-        const preferences = JSON.parse(localStorage.getItem('newsPreferences') || '{}')
-        if (preferences[props.news.link] === 'like') {
-          isLiked.value = true
-        } else if (preferences[props.news.link] === 'dislike') {
-          isDisliked.value = true
-        }
-      } catch (e) {
-        console.error('Error loading preferences:', e)
+    isDisliked.value = !isDisliked.value
+    emit('dislike', props.news.link, isDisliked.value)
+  }
+  
+  const handleImageError = () => {
+    imageError.value = true
+  }
+  
+  onMounted(() => {
+    try {
+      const preferences = JSON.parse(localStorage.getItem('newsPreferences') || '{}')
+      if (preferences[props.news.link] === 'like') {
+        isLiked.value = true
+      } else if (preferences[props.news.link] === 'dislike') {
+        isDisliked.value = true
       }
-    })
-    </script>
-
-
-<template>
+    } catch (e) {
+      console.error('Error loading preferences:', e)
+    }
+  })
+  </script>
+  
+  <template>
     <div class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-2xl">
       <div class="card-body p-4">
         <div class="flex gap-4">
-          <!-- SLIKA VIJEST-->
-          <div class="flex-shrink-0">
+          <!-- SLIKA VIJESTI -->
+          <div class="flex-shrink-0 cursor-pointer" @click="openNewsModal">
             <figure class="relative overflow-hidden w-32 h-24 rounded-lg bg-base-300">
               <img
                 v-if="imageUrl && !imageError"
@@ -95,9 +97,9 @@
             </figure>
           </div>
   
-          <!-- VIJEST-->
+          <!-- SADRŽAJ -->
           <div class="flex-1 min-w-0">
-            <!-- IZVOR -->
+            <!-- izvor badge -->
             <div class="mb-2">
               <span class="badge badge-primary badge-sm">
                 {{ news.source || 'Vijesti' }}
@@ -107,24 +109,23 @@
               </span>
             </div>
   
-            <!-- NASLOV -->
+            <!-- naslov -->
             <h3 class="card-title text-base leading-tight mb-2">
               <a 
-                :href="news.link" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                class="line-clamp-2 hover:text-primary transition-colors"
+                @click.prevent="openNewsModal"
+                href="#"
+                class="line-clamp-2 hover:text-primary transition-colors cursor-pointer"
               >
                 {{ news.title }}
               </a>
             </h3>
   
-            <!-- OPIS -->
+            <!-- kratki opis -->
             <p class="text-sm opacity-70 line-clamp-2 mb-3">
               {{ cleanDescription }}
             </p>
   
-            <!-- USER INTERACTION -->
+            <!-- naredbe nad vijestima -->
             <div class="flex justify-between items-center">
               <div class="flex gap-1">
                 <button
@@ -170,10 +171,8 @@
                 </button>
               </div>
   
-              <a
-                :href="news.link"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                @click="openNewsModal"
                 class="btn btn-xs btn-primary"
               >
                 Čitaj
@@ -188,10 +187,10 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    d="M9 5l7 7-7 7"
                   />
                 </svg>
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -199,7 +198,7 @@
     </div>
   </template>
   
-
+ 
   
   <style scoped>
   .line-clamp-2 {
