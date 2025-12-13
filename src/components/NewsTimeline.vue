@@ -1,150 +1,13 @@
-<template>
-    <div class="w-full max-w-4xl mx-auto px-4 py-8">
-      <!-- head -->
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <h2 class="text-3xl font-bold">Najnovije vijesti</h2>
-        <div class="flex gap-2">
-          <button 
-            @click="sortOrder = 'desc'" 
-            :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'"
-            class="btn btn-sm"
-          >
-            Najnovije
-          </button>
-          <button 
-            @click="sortOrder = 'asc'" 
-            :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'"
-            class="btn btn-sm"
-          >
-            Najstarije
-          </button>
-          <button 
-            @click="refreshNews" 
-            class="btn btn-sm btn-outline"
-            :class="{ 'loading': loading }"
-            :disabled="loading"
-          >
-            <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-        </div>
-      </div>
-  
-      <!--učitavanje state -->
-      <div v-if="loading && displayedNews.length === 0" class="flex justify-center py-16">
-        <span class="loading loading-spinner loading-lg"></span>
-      </div>
-  
-      <!-- greška -->
-      <div v-else-if="error && displayedNews.length === 0" class="text-center py-16">
-        <div class="alert alert-error max-w-md mx-auto">
-          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{{ error }}</span>
-        </div>
-        <div class="flex gap-2 justify-center mt-4">
-          <button @click="refreshNews" class="btn btn-sm btn-primary">Pokušaj ponovno</button>
-          <button @click="loadDemoNews" class="btn btn-sm btn-secondary">Prikaži demo vijesti</button>
-        </div>
-      </div>
-  
-      <!-- timeline/vremenska crta -->
-      <ul v-else-if="displayedNews.length > 0" class="timeline timeline-vertical timeline-compact">
-        <li v-for="(news, index) in displayedNews" :key="news.link || index">
-          <hr v-if="index > 0" class="bg-primary" />
-          
-          <!-- datum i vrijeme -->
-          <div class="timeline-start text-end pr-4 py-6">
-            <time class="font-mono text-sm font-bold block">
-              {{ formatTime(news.pubDate) }}
-            </time>
-            <time class="font-mono text-xs opacity-60 block mt-1">
-              {{ formatDate(news.pubDate) }}
-            </time>
-          </div>
-          
-          <!-- vremenska crta sredina -->
-          <div class="timeline-middle">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              class="w-5 h-5 text-primary"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </div>
-          
-          <!-- vremenska crta kraj -->
-          <div class="timeline-end pl-4 py-4">
-            <NewsCardCompact 
-              :news="news"
-              @like="handleLike"
-              @dislike="handleDislike"
-              @open-modal="openModal"
-            />
-          </div>
-          
-          <hr v-if="index < displayedNews.length - 1" class="bg-primary" />
-        </li>
-      </ul>
-  
-      <!-- učitaj višer -->
-      <div 
-        ref="loadMoreTrigger" 
-        v-if="hasMore && displayedNews.length > 0"
-        class="flex justify-center py-8"
-      >
-        <span class="loading loading-spinner loading-md" v-if="loadingMore"></span>
-        <p v-else class="text-sm opacity-60">Scrollaj za više vijesti...</p>
-      </div>
-  
-      <!-- prazno -->
-      <div v-else-if="displayedNews.length === 0" class="text-center py-16">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-24 h-24 mx-auto mb-4 text-base-content opacity-20"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-          />
-        </svg>
-        <p class="text-xl opacity-60 mb-4">Nema dostupnih vijesti</p>
-        <div class="flex gap-2 justify-center">
-          <button @click="refreshNews" class="btn btn-sm btn-primary">Osvježi</button>
-          <button @click="loadDemoNews" class="btn btn-sm btn-secondary">Demo vijesti</button>
-        </div>
-      </div>
-  
-      <NewsModal
-        :news-item="selectedNews"
-        :is-open="isModalOpen"
-        @close="closeModal"
-        @like="handleLike"
-        @dislike="handleDislike"
-      />
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
-  import { useNewsGlobal } from '../Services/NewsGlobal.js'
+<script setup>
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+  import { useNewsGlobal } from '../Services/NewsGlobal'
+  import { useFeedsStore } from '../stores/feedStore'
   import NewsCardCompact from './NewsCardCompact.vue'
   import NewsModal from './NewsModal.vue'
   
   const newsService = useNewsGlobal()
+  const feedsStore = useFeedsStore()
+  
   const allNews = ref([])
   const displayedNews = ref([])
   const currentPage = ref(1)
@@ -222,13 +85,27 @@
     }, 300)
   }
   
+  // Osvježi vijesti na osnovu odabrane kategorije
   const refreshNews = async () => {
     try {
-      const fetchedNews = await newsService.fetchNews()
+      // Učitaj postavke feedova
+      feedsStore.loadFromLocalStorage()
+      const categoryId = feedsStore.selectedCategoryId
+      
+      console.log('Učitavam vijesti za kategoriju:', categoryId)
+      
+      // Dohvati 
+      const fetchedNews = await newsService.fetchNews(categoryId)
+      
       if (fetchedNews && fetchedNews.length > 0) {
+        console.log('Učitano', fetchedNews.length, 'vijesti')
         allNews.value = fetchedNews
         displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
         currentPage.value = 1
+      } else {
+        console.warn('⚠️ Nema vijesti za ovu kategoriju')
+        allNews.value = []
+        displayedNews.value = []
       }
     } catch (err) {
       console.error('Error refreshing news:', err)
@@ -236,6 +113,7 @@
   }
   
   const loadDemoNews = () => {
+    console.log('demo vijesti')
     const mockNews = newsService.getMockNews()
     allNews.value = mockNews
     displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
@@ -302,8 +180,21 @@
     }
   }
   
+  //gledanje za promjene kategorije
+  watch(
+    () => feedsStore.selectedCategoryId,
+    async (newCategoryId) => {
+      console.log('Kategorija se promijenila na:', newCategoryId)
+      displayedNews.value = []
+      currentPage.value = 1
+      allNews.value = []
+      await refreshNews()
+    }
+  )
+  
   onMounted(async () => {
     loadPreferences()
+    feedsStore.loadFromLocalStorage()
     await refreshNews()
     
     setTimeout(() => {
@@ -317,4 +208,154 @@
     }
   })
   </script>
+  
+  <template>
+    <div class="w-full max-w-4xl mx-auto px-4 py-8">
+      <!-- Info o trenutnoj kategoriji -->
+      <div v-if="feedsStore.selectedCategory" class="mb-6 p-4 bg-base-200 rounded-lg">
+        <p class="text-sm">
+          <strong>📂 Kategorija:</strong> {{ feedsStore.selectedCategory.name }}
+          <span v-if="feedsStore.selectedCategoryId !== 'all'" class="ml-3 opacity-75">
+            ({{ feedsStore.selectedFeeds.length }} feedova)
+          </span>
+        </p>
+      </div>
+  
+      <!-- head -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <h2 class="text-3xl font-bold">Najnovije vijesti</h2>
+        <div class="flex gap-2">
+          <button 
+            @click="sortOrder = 'desc'" 
+            :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'"
+            class="btn btn-sm"
+          >
+            Najnovije
+          </button>
+          <button 
+            @click="sortOrder = 'asc'" 
+            :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'"
+            class="btn btn-sm"
+          >
+            Najstarije
+          </button>
+          <button 
+            @click="refreshNews" 
+            class="btn btn-sm btn-outline"
+            :class="{ 'loading': loading }"
+            :disabled="loading"
+          >
+            <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+      </div>
+  
+      <!--učitavanje state -->
+      <div v-if="loading && displayedNews.length === 0" class="flex justify-center py-16">
+        <span class="loading loading-spinner loading-lg"></span>
+      </div>
+  
+      <!-- greška -->
+      <div v-else-if="error && displayedNews.length === 0" class="text-center py-16">
+        <div class="alert alert-error max-w-md mx-auto">
+          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{{ error }}</span>
+        </div>
+        <div class="flex gap-2 justify-center mt-4">
+          <button @click="refreshNews" class="btn btn-sm btn-primary">Pokušaj ponovno</button>
+          <button @click="loadDemoNews" class="btn btn-sm btn-secondary">Prikaži demo vijesti</button>
+        </div>
+      </div>
+  
+      <!-- vremenska crta -->
+      <ul v-else-if="displayedNews.length > 0" class="timeline timeline-vertical timeline-compact">
+        <li v-for="(news, index) in displayedNews" :key="news.link || index">
+          <hr v-if="index > 0" class="bg-primary" />
+          
+          <!-- datum i vrijeme -->
+          <div class="timeline-start text-end pr-4 py-6">
+            <time class="font-mono text-sm font-bold block">
+              {{ formatTime(news.pubDate) }}
+            </time>
+            <time class="font-mono text-xs opacity-60 block mt-1">
+              {{ formatDate(news.pubDate) }}
+            </time>
+          </div>
+          
+          <!-- vremenska crta sredina -->
+          <div class="timeline-middle">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-5 h-5 text-primary"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
+          
+          <!-- vremenska crta kraj -->
+          <div class="timeline-end pl-4 py-4">
+            <NewsCardCompact 
+              :news="news"
+              @like="handleLike"
+              @dislike="handleDislike"
+              @open-modal="openModal"
+            />
+          </div>
+          
+          <hr v-if="index < displayedNews.length - 1" class="bg-primary" />
+        </li>
+      </ul>
+  
+      <!-- učitaj više -->
+      <div 
+        ref="loadMoreTrigger" 
+        v-if="hasMore && displayedNews.length > 0"
+        class="flex justify-center py-8"
+      >
+        <span class="loading loading-spinner loading-md" v-if="loadingMore"></span>
+        <p v-else class="text-sm opacity-60">Scrollaj za više vijesti...</p>
+      </div>
+  
+      <!-- prazno -->
+      <div v-else-if="displayedNews.length === 0" class="text-center py-16">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-24 h-24 mx-auto mb-4 text-base-content opacity-20"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+          />
+        </svg>
+        <p class="text-xl opacity-60 mb-4">Nema dostupnih vijesti</p>
+        <div class="flex gap-2 justify-center">
+          <button @click="refreshNews" class="btn btn-sm btn-primary">Osvježi</button>
+          <button @click="loadDemoNews" class="btn btn-sm btn-secondary">Demo vijesti</button>
+        </div>
+      </div>
+  
+      <NewsModal
+        :news-item="selectedNews"
+        :is-open="isModalOpen"
+        @close="closeModal"
+        @like="handleLike"
+        @dislike="handleDislike"
+      />
+    </div>
+  </template>
   

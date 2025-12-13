@@ -1,0 +1,268 @@
+// feed definicije
+export const FEED_CATEGORIES = {
+  ALL: "all",
+  WORLD: "world",
+  TECH: "tech",
+  BUSINESS: "business",
+  SPORTS: "sports",
+  ENTERTAINMENT: "entertainment",
+  SCIENCE: "science",
+  HEALTH: "health",
+};
+
+export const FEED_SOURCES = [
+  // world vijesti
+  {
+    id: "bbc-world",
+    name: "BBC World News",
+    category: FEED_CATEGORIES.WORLD,
+    url: "https://feeds.bbci.co.uk/news/world/rss.xml",
+    icon: "🌍",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "cnn-world",
+    name: "CNN World",
+    category: FEED_CATEGORIES.WORLD,
+    url: "https://rss.cnn.com/rss/edition_world.rss",
+    icon: "🌍",
+    enabled: true,
+    priority: 2,
+  },
+  {
+    id: "aljazeera",
+    name: "Al Jazeera",
+    category: FEED_CATEGORIES.WORLD,
+    url: "https://www.aljazeera.com/xml/rss/all.xml",
+    icon: "🌍",
+    enabled: true,
+    priority: 3,
+  },
+  {
+    id: "france24",
+    name: "France 24",
+    category: FEED_CATEGORIES.WORLD,
+    url: "https://www.france24.com/en/rss",
+    icon: "🌍",
+    enabled: false,
+    priority: 4,
+  },
+
+  // tehnologija
+  {
+    id: "techcrunch",
+    name: "TechCrunch",
+    category: FEED_CATEGORIES.TECH,
+    url: "https://techcrunch.com/feed/",
+    icon: "💻",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "verge",
+    name: "The Verge",
+    category: FEED_CATEGORIES.TECH,
+    url: "https://www.theverge.com/rss/index.xml",
+    icon: "💻",
+    enabled: true,
+    priority: 2,
+  },
+  {
+    id: "arstechnica",
+    name: "Ars Technica",
+    category: FEED_CATEGORIES.TECH,
+    url: "https://feeds.arstechnica.com/arstechnica/index",
+    icon: "💻",
+    enabled: true,
+    priority: 3,
+  },
+  {
+    id: "wired",
+    name: "Wired",
+    category: FEED_CATEGORIES.TECH,
+    url: "https://www.wired.com/feed/rss",
+    icon: "💻",
+    enabled: false,
+    priority: 4,
+  },
+  {
+    id: "gizmodo",
+    name: "Gizmodo",
+    category: FEED_CATEGORIES.TECH,
+    url: "https://gizmodo.com/rss",
+    icon: "💻",
+    enabled: false,
+    priority: 5,
+  },
+
+  // poslovno
+  {
+    id: "bloomberg",
+    name: "Bloomberg",
+    category: FEED_CATEGORIES.BUSINESS,
+    url: "https://www.bloomberg.com/feed",
+    icon: "💼",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "cnbc",
+    name: "CNBC",
+    category: FEED_CATEGORIES.BUSINESS,
+    url: "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+    icon: "💼",
+    enabled: true,
+    priority: 2,
+  },
+  {
+    id: "ft",
+    name: "Financial Times",
+    category: FEED_CATEGORIES.BUSINESS,
+    url: "https://www.ft.com/?format=rss",
+    icon: "💼",
+    enabled: false,
+    priority: 3,
+  },
+  {
+    id: "wsj",
+    name: "Wall Street Journal",
+    category: FEED_CATEGORIES.BUSINESS,
+    url: "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    icon: "💼",
+    enabled: false,
+    priority: 4,
+  },
+
+  // sport
+  {
+    id: "espn",
+    name: "ESPN",
+    category: FEED_CATEGORIES.SPORTS,
+    url: "https://www.espn.com/espn/rss/news",
+    icon: "⚽",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "bbc-sport",
+    name: "BBC Sport",
+    category: FEED_CATEGORIES.SPORTS,
+    url: "https://feeds.bbci.co.uk/sport/rss.xml",
+    icon: "⚽",
+    enabled: true,
+    priority: 2,
+  },
+  {
+    id: "foxsports",
+    name: "Fox Sports",
+    category: FEED_CATEGORIES.SPORTS,
+    url: "https://api.foxsports.com/v1/rss",
+    icon: "⚽",
+    enabled: false,
+    priority: 3,
+  },
+
+  // zabava
+  {
+    id: "variety",
+    name: "Variety",
+    category: FEED_CATEGORIES.ENTERTAINMENT,
+    url: "https://variety.com/feed/",
+    icon: "🎬",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "ew",
+    name: "Entertainment Weekly",
+    category: FEED_CATEGORIES.ENTERTAINMENT,
+    url: "https://ew.com/feed/",
+    icon: "🎬",
+    enabled: false,
+    priority: 2,
+  },
+
+  // znanost
+  {
+    id: "science-daily",
+    name: "Science Daily",
+    category: FEED_CATEGORIES.SCIENCE,
+    url: "https://www.sciencedaily.com/rss/all.xml",
+    icon: "🔬",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "nature",
+    name: "Nature News",
+    category: FEED_CATEGORIES.SCIENCE,
+    url: "https://www.nature.com/nature.rss",
+    icon: "🔬",
+    enabled: false,
+    priority: 2,
+  },
+
+  // zdravlje
+  {
+    id: "webmd",
+    name: "WebMD Health News",
+    category: FEED_CATEGORIES.HEALTH,
+    url: "https://rssfeeds.webmd.com/rss/rss.aspx?RSSSource=RSS_PUBLIC",
+    icon: "🏥",
+    enabled: true,
+    priority: 1,
+  },
+  {
+    id: "healthline",
+    name: "Healthline",
+    category: FEED_CATEGORIES.HEALTH,
+    url: "https://www.healthline.com/rss",
+    icon: "🏥",
+    enabled: false,
+    priority: 2,
+  },
+];
+
+export const CATEGORY_INFO = {
+  [FEED_CATEGORIES.ALL]: {
+    name: "Sve vijesti",
+    icon: "📰",
+    description: "Sve kategorije zajedno",
+  },
+  [FEED_CATEGORIES.WORLD]: {
+    name: "Svijet",
+    icon: "🌍",
+    description: "Svjetske vijesti i politika",
+  },
+  [FEED_CATEGORIES.TECH]: {
+    name: "Tehnologija",
+    icon: "💻",
+    description: "Tech novosti i inovacije",
+  },
+  [FEED_CATEGORIES.BUSINESS]: {
+    name: "Biznis",
+    icon: "💼",
+    description: "Poslovanje i financije",
+  },
+  [FEED_CATEGORIES.SPORTS]: {
+    name: "Sport",
+    icon: "⚽",
+    description: "Sportske vijesti",
+  },
+  [FEED_CATEGORIES.ENTERTAINMENT]: {
+    name: "Zabava",
+    icon: "🎬",
+    description: "Filmovi, glazba, celebrity",
+  },
+  [FEED_CATEGORIES.SCIENCE]: {
+    name: "Znanost",
+    icon: "🔬",
+    description: "Znanstvena otkrića",
+  },
+  [FEED_CATEGORIES.HEALTH]: {
+    name: "Zdravlje",
+    icon: "🏥",
+    description: "Zdravstvene vijesti i savjeti",
+  },
+};

@@ -111,30 +111,31 @@
       const error = computed(() => newsService.error.value);
   
       const fetchNews = async () => {
-        try {
-          retryCount.value++;
-          const fetchedNews = await newsService.fetchNews();
-          
-          if (fetchedNews && fetchedNews.length > 0) {
-            news.value = fetchedNews;
-            currentIndex.value = 0;
-            currentNews.value = fetchedNews[0];
-            retryCount.value = 0; 
-            startCarousel();
-          } else if (retryCount.value < maxRetries) {
-            setTimeout(() => fetchNews(), 2000 * retryCount.value);
-          } else {
-            loadMockNews();
-          }
-        } catch (err) {
-          console.error('Error fetching news:', err);
-          if (retryCount.value < maxRetries) {
-            setTimeout(() => fetchNews(), 2000 * retryCount.value);
-          } else {
-            loadMockNews();
-          }
-        }
-      };
+  try {
+    retryCount.value++;
+    const fetchedNews = await newsService.fetchNews();
+
+    if (fetchedNews && fetchedNews.length > 0) {
+      // Limit to the 7 most recent news
+      news.value = fetchedNews.slice(0, 7);
+      currentIndex.value = 0;
+      currentNews.value = news.value[0];
+      retryCount.value = 0; 
+      startCarousel();
+    } else if (retryCount.value < maxRetries) {
+      setTimeout(() => fetchNews(), 2000 * retryCount.value);
+    } else {
+      loadMockNews();
+    }
+  } catch (err) {
+    console.error('Error fetching news:', err);
+    if (retryCount.value < maxRetries) {
+      setTimeout(() => fetchNews(), 2000 * retryCount.value);
+    } else {
+      loadMockNews();
+    }
+  }
+};
   
       const loadMockNews = () => {
         const mockNews = newsService.getMockNews();
