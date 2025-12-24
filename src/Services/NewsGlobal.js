@@ -1,36 +1,11 @@
 import { ref, computed } from 'vue';
+import { useFeedsStore } from '../stores/feedStore';
 
 const isLoading = ref(false);
 const error = ref(null);
 const cachedNews = ref([]);
 const newsBySource = ref({});
 const loadingProgress = ref(0);
-
-const RSS_FEEDS = [
-  // hr
-  { name: 'Index.hr', url: 'https://www.index.hr/rss', domain: 'index.hr', category: 'hrvatska' },
-  { name: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', category: 'hrvatska' },
-  { name: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', category: 'hrvatska' },
-  { name: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', category: 'tech' },
-  { name: 'Netokracija', url: 'https://www.netokracija.com/feed', domain: 'netokracija.com', category: 'tech' },
-  
-  // world
-  { name: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', category: 'world' },
-  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', category: 'world' },
-  { name: 'Associated Press', url: 'https://feeds.apnews.com/rss/topnews', domain: 'apnews.com', category: 'world' },
-  
-  // it
-  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', category: 'tech' },
-  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', domain: 'arstechnica.com', category: 'tech' },
-  { name: 'Hacker News', url: 'https://hnrss.org/frontpage', domain: 'news.ycombinator.com', category: 'tech' },
-  { name: 'MIT Technology Review', url: 'https://www.technologyreview.com/feed/', domain: 'technologyreview.com', category: 'tech' },
-  
-  // znanost
-  { name: 'Aeon', url: 'https://aeon.co/feed.rss', domain: 'aeon.co', category: 'science' },
-  
-  // posao
-  { name: 'Financial Times', url: 'https://www.ft.com/?format=rss', domain: 'ft.com', category: 'business' },
-];
 
 // više proxija
 const CORS_PROXIES = [
@@ -84,14 +59,14 @@ const setCachedData = (data) => {
 };
 
 // rss parsing
-const parseRSSFeed = (xmlText, feedName, feedDomain, feedCategory) => {
+const parseRSSFeed = (xmlText, feed) => {
   try {
     const parser = new DOMParser();
     const xml = parser.parseFromString(xmlText, 'text/xml');
     
     const parseError = xml.querySelector('parsererror');
     if (parseError) {
-      console.warn(`Parse greška za ${feedName}`);
+      console.warn(`Parse greška za ${feed.name}`);
       return [];
     }
     
@@ -128,7 +103,7 @@ const parseRSSFeed = (xmlText, feedName, feedDomain, feedCategory) => {
         }
       }
       
-      // miči smeče
+      // miči smeće
       description = description
         .replace(/<\/?[^>]+(>|$)/g, '')
         .replace(/&nbsp;/g, ' ')
@@ -142,16 +117,17 @@ const parseRSSFeed = (xmlText, feedName, feedDomain, feedCategory) => {
         description,
         link,
         pubDate: pubDate || new Date().toISOString(),
-        source: feedName,
-        domain: feedDomain,
-        category: feedCategory,
+        source: feed.name,
+        domain: feed.domain || 'unknown',
+        category: feed.category || 'general',
+        feedId: feed.id, // Dodan feedId
         thumbnail,
-        guid: link || `${feedName}-${Date.now()}-${Math.random()}`
+        guid: link || `${feed.name}-${Date.now()}-${Math.random()}`
       };
     });
     
   } catch (err) {
-    console.error(`Parse greška za ${feedName}:`, err.message);
+    console.error(`Parse greška za ${feed.name}:`, err.message);
     return [];
   }
 };
@@ -257,14 +233,33 @@ const fetchNewsFresh = async (categoryId = null) => {
   loadingProgress.value = 0;
 
   try {
+    // dohvati feedove iz store-a ( promjena na mongo kasnije )
+    const feedsStore = useFeedsStore();
+    feedsStore.loadFromLocalStorage();
+    
+    // odaberi feedove ovisno o kategoriji
+    let feedsToFetch;
+    if (categoryId === 'all' || !categoryId) {
+      feedsToFetch = feedsStore.availableFeeds;
+    } else {
+      const category = feedsStore.categories.find(c => c.id === categoryId);
+      feedsToFetch = category ? category.feeds : [];
+    }
+
+    if (feedsToFetch.length === 0) {
+      console.warn('Nema feedova za dohvaćanje');
+      error.value = 'Nema konfiguriranih feedova';
+      return [];
+    }
+
     let successCount = 0;
     let completedCount = 0;
-    const totalFeeds = RSS_FEEDS.length;
+    const totalFeeds = feedsToFetch.length;
 
     const fetchSingleFeed = async (feed) => {
       try {
         const xmlText = await fetchRSSFeed(feed.url, feed.name, 3);
-        const items = parseRSSFeed(xmlText, feed.name, feed.domain, feed.category);
+        const items = parseRSSFeed(xmlText, feed);
         
         if (items.length > 0) {
           items.forEach(item => {
@@ -275,10 +270,8 @@ const fetchNewsFresh = async (categoryId = null) => {
           newsBySource.value[feed.name] = items;
           successCount++;
           sortAndUpdateNews();
-          
-          console.log(`✅ ${feed.name}: ${items.length} NEWS`);
         } else {
-          console.warn(` ${feed.name}: 0 news -> makni iz RSS array jer ne dela`);
+          console.warn(` ${feed.name}: 0 news -> makni iz RSS array jer ne radi`);
         }
       } catch (err) {
         console.warn(`❌ ${feed.name}: ${err.message}`);
@@ -289,7 +282,7 @@ const fetchNewsFresh = async (categoryId = null) => {
     };
 
     console.log(`⚡ Load ->>> ${totalFeeds} izvora paralelno...`);
-    await Promise.allSettled(RSS_FEEDS.map(fetchSingleFeed));
+    await Promise.allSettled(feedsToFetch.map(fetchSingleFeed));
 
     // Finalno sortiranje
     sortAndUpdateNews();

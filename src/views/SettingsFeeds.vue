@@ -11,6 +11,12 @@
     const editingCategoryFeeds = ref([]);
     const showAddForm = ref(false);
     
+    // prilgođen rss feed
+    const showCustomFeedForm = ref(false);
+    const customFeedName = ref('');
+    const customFeedUrl = ref('');
+    const customFeedCategory = ref('custom');
+    
     const allFeedsByDomain = computed(() => feedsStore.feedsByCategory);
     
     onMounted(() => {
@@ -71,6 +77,40 @@
         feedsStore.deleteCategory(categoryId);
       }
     };
+
+    // custom feed funkcije
+    const startAddingCustomFeed = () => {
+      showCustomFeedForm.value = true;
+      customFeedName.value = '';
+      customFeedUrl.value = '';
+      customFeedCategory.value = 'custom';
+    };
+
+    const cancelAddingCustomFeed = () => {
+      showCustomFeedForm.value = false;
+      customFeedName.value = '';
+      customFeedUrl.value = '';
+      customFeedCategory.value = 'custom';
+    };
+
+    const confirmAddCustomFeed = () => {
+      if (customFeedName.value.trim() && customFeedUrl.value.trim()) {
+        try {
+          // validacija URL-a
+          new URL(customFeedUrl.value);
+          feedsStore.addCustomFeed(customFeedName.value, customFeedUrl.value, customFeedCategory.value);
+          cancelAddingCustomFeed();
+        } catch (error) {
+          alert('Molimo unesite ispravan URL (npr. https://example.com/feed)');
+        }
+      }
+    };
+
+    const confirmDeleteCustomFeed = (feedId) => {
+      if (confirm('Jeste li sigurni da želite obrisati ovaj custom feed?')) {
+        feedsStore.removeCustomFeed(feedId);
+      }
+    };
     </script>
     
     <template>
@@ -78,6 +118,121 @@
         <h1 class="text-4xl font-bold mb-2">Postavke Feedova</h1>
         <p class="text-lg opacity-70 mb-8">Kreirajte i upravljajte svojim kategorijama vijesti</p>
     
+        <!-- Sekcija za Custom RSS Feedove -->
+        <div class="mb-8">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h2 class="text-2xl font-semibold">Custom RSS Feedovi</h2>
+              <p class="text-sm opacity-70 mt-1">Dodajte svoje prilagođene RSS izvore</p>
+            </div>
+            <button 
+              v-if="!showCustomFeedForm"
+              @click="startAddingCustomFeed"
+              class="btn btn-secondary"
+            >
+              + Dodaj Custom Feed
+            </button>
+          </div>
+
+          <!-- Forma za dodavanje custom feeda -->
+          <div v-if="showCustomFeedForm" class="card bg-base-200 shadow mb-4">
+            <div class="card-body">
+              <h3 class="card-title mb-4">Dodaj Custom RSS Feed</h3>
+              
+              <div class="form-control mb-4">
+                <label class="label">
+                  <span class="label-text">Naziv izvora</span>
+                </label>
+                <input 
+                  v-model="customFeedName"
+                  type="text" 
+                  placeholder="npr. Moj Blog"
+                  class="input input-bordered"
+                  maxlength="50"
+                />
+                <label class="label">
+                  <span class="label-text-alt">{{ customFeedName.length }}/50</span>
+                </label>
+              </div>
+
+              <div class="form-control mb-4">
+                <label class="label">
+                  <span class="label-text">RSS URL</span>
+                </label>
+                <input 
+                  v-model="customFeedUrl"
+                  type="url" 
+                  placeholder="https://example.com/feed"
+                  class="input input-bordered"
+                />
+                <label class="label">
+                  <span class="label-text-alt">Unesite pun URL RSS feeda</span>
+                </label>
+              </div>
+
+              <div class="form-control mb-4">
+                <label class="label">
+                  <span class="label-text">Kategorija</span>
+                </label>
+                <select v-model="customFeedCategory" class="select select-bordered">
+                  <option value="custom">Custom</option>
+                  <option value="hrvatska">Hrvatska</option>
+                  <option value="world">Svijet</option>
+                  <option value="tech">Tehnologija</option>
+                  <option value="science">Znanost</option>
+                  <option value="business">Posao</option>
+                </select>
+              </div>
+
+              <div class="card-actions justify-end gap-2">
+                <button 
+                  @click="cancelAddingCustomFeed"
+                  class="btn btn-ghost"
+                >
+                  Otkaži
+                </button>
+                <button 
+                  @click="confirmAddCustomFeed"
+                  :disabled="!customFeedName.trim() || !customFeedUrl.trim()"
+                  class="btn btn-secondary"
+                >
+                  Dodaj Feed
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista custom feedova -->
+          <div v-if="feedsStore.customFeeds.length > 0" class="grid gap-2">
+            <div 
+              v-for="feed in feedsStore.customFeeds" 
+              :key="feed.id"
+              class="card bg-base-100 shadow-sm"
+            >
+              <div class="card-body py-3 px-4">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">{{ feed.name }}</h4>
+                    <p class="text-xs opacity-60">{{ feed.url }}</p>
+                    <span class="badge badge-sm badge-outline mt-1">{{ feed.category }}</span>
+                  </div>
+                  <button 
+                    @click="confirmDeleteCustomFeed(feed.id)"
+                    class="btn btn-sm btn-error btn-outline"
+                  >
+                    Obriši
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="!showCustomFeedForm" class="alert">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>Još nemate dodanih custom RSS feedova. Kliknite "Dodaj Custom Feed" za početak!</span>
+          </div>
+        </div>
+
         <!-- Standardna kategorija (samo prikaz) -->
         <div class="mb-8">
           <h2 class="text-2xl font-semibold mb-4">Obavezna Kategorija</h2>
@@ -104,7 +259,9 @@
             <button 
               v-if="!showAddForm"
               @click="startAddingCategory"
+              :disabled="feedsStore.availableFeeds.length === 0"
               class="btn btn-primary"
+              title="Kreirajte novu kategoriju kombinirajući različite RSS feedove"
             >
               + Nova Kategorija
             </button>
@@ -146,8 +303,8 @@
                       >
                         <input 
                           type="checkbox"
-                          :checked="selectedFeedsForNew.includes(feed.id)"
-                          @change="() => toggleFeedSelection(feed.id, false)"
+                          :value="feed.id"
+                          v-model="selectedFeedsForNew"
                           class="checkbox checkbox-primary checkbox-sm"
                         />
                         <span class="text-sm">{{ feed.name }}</span>
@@ -250,8 +407,8 @@
                           >
                             <input 
                               type="checkbox"
-                              :checked="editingCategoryFeeds.includes(feed.id)"
-                              @change="() => toggleFeedSelection(feed.id, true)"
+                              :value="feed.id"
+                              v-model="editingCategoryFeeds"
                               class="checkbox checkbox-primary checkbox-sm"
                             />
                             <span>{{ feed.name }}</span>

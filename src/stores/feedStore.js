@@ -18,29 +18,61 @@ export const useFeedsStore = defineStore('feeds', () => {
 
   const availableFeeds = ref([
  // hr
- { name: 'Index.hr', url: 'https://www.index.hr/rss', domain: 'index.hr', category: 'hrvatska' },
- { name: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', category: 'hrvatska' },
- { name: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', category: 'hrvatska' },
- { name: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', category: 'tech' },
- { name: 'Netokracija', url: 'https://www.netokracija.com/feed', domain: 'netokracija.com', category: 'tech' },
+ { id: 'feed_index_hr', name: 'Index.hr', url: 'https://www.index.hr/rss', domain: 'index.hr', category: 'hrvatska', isCustom: false },
+ { id: 'feed_vecernji', name: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', category: 'hrvatska', isCustom: false },
+ { id: 'feed_24sata', name: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', category: 'hrvatska', isCustom: false },
+ { id: 'feed_bug_hr', name: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', category: 'tech', isCustom: false },
+ { id: 'feed_netokracija', name: 'Netokracija', url: 'https://www.netokracija.com/feed', domain: 'netokracija.com', category: 'tech', isCustom: false },
  
  // world
- { name: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', category: 'world' },
- { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', category: 'world' },
- { name: 'Associated Press', url: 'https://feeds.apnews.com/rss/topnews', domain: 'apnews.com', category: 'world' },
+ { id: 'feed_bbc', name: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', category: 'world', isCustom: false },
+ { id: 'feed_aljazeera', name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', category: 'world', isCustom: false },
+ { id: 'feed_ap', name: 'Associated Press', url: 'https://feeds.apnews.com/rss/topnews', domain: 'apnews.com', category: 'world', isCustom: false },
  
  // it
- { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', category: 'tech' },
- { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', domain: 'arstechnica.com', category: 'tech' },
- { name: 'Hacker News', url: 'https://hnrss.org/frontpage', domain: 'news.ycombinator.com', category: 'tech' },
- { name: 'MIT Technology Review', url: 'https://www.technologyreview.com/feed/', domain: 'technologyreview.com', category: 'tech' },
+ { id: 'feed_techcrunch', name: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', category: 'tech', isCustom: false },
+ { id: 'feed_arstechnica', name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', domain: 'arstechnica.com', category: 'tech', isCustom: false },
+ { id: 'feed_hn', name: 'Hacker News', url: 'https://hnrss.org/frontpage', domain: 'news.ycombinator.com', category: 'tech', isCustom: false },
+ { id: 'feed_mit_tech', name: 'MIT Technology Review', url: 'https://www.technologyreview.com/feed/', domain: 'technologyreview.com', category: 'tech', isCustom: false },
  
  // znanost
- { name: 'Aeon', url: 'https://aeon.co/feed.rss', domain: 'aeon.co', category: 'science' },
+ { id: 'feed_aeon', name: 'Aeon', url: 'https://aeon.co/feed.rss', domain: 'aeon.co', category: 'science', isCustom: false },
  
  // posao
- { name: 'Financial Times', url: 'https://www.ft.com/?format=rss', domain: 'ft.com', category: 'business' },
+ { id: 'feed_ft', name: 'Financial Times', url: 'https://www.ft.com/?format=rss', domain: 'ft.com', category: 'business', isCustom: false },
   ]);
+
+  // korisnikov custom RSS izvor
+  const addCustomFeed = (name, url, category = 'custom') => {
+    const domain = new URL(url).hostname.replace('www.', '');
+    const newFeed = {
+      id: `feed_custom_${Date.now()}`,
+      name,
+      url,
+      domain,
+      category,
+      isCustom: true,
+      createdAt: new Date().toISOString()
+    };
+    availableFeeds.value.push(newFeed);
+    saveToLocalStorage();
+    return newFeed;
+  };
+
+  // obriši custom feed
+  const removeCustomFeed = (feedId) => {
+    const index = availableFeeds.value.findIndex(f => f.id === feedId && f.isCustom);
+    if (index !== -1) {
+      // ukloni feed iz svih kategorija
+      categories.value.forEach(cat => {
+        cat.feeds = cat.feeds.filter(f => f.id !== feedId);
+      });
+      availableFeeds.value.splice(index, 1);
+      saveToLocalStorage();
+      return true;
+    }
+    return false;
+  };
 
   // dodaj  kategoriju
   const addCategory = (categoryName, selectedFeedIds = []) => {
@@ -115,12 +147,16 @@ export const useFeedsStore = defineStore('feeds', () => {
     return grouped;
   });
 
+  const customFeeds = computed(() => {
+    return availableFeeds.value.filter(f => f.isCustom);
+  });
 
   const saveToLocalStorage = () => {
     try {
       const dataToSave = {
         categories: categories.value,
         selectedCategoryId: selectedCategoryId.value,
+        customFeeds: availableFeeds.value.filter(f => f.isCustom),
         savedAt: new Date().toISOString(),
         version: '1.0'
       };
@@ -137,6 +173,14 @@ export const useFeedsStore = defineStore('feeds', () => {
         const data = JSON.parse(saved);
         categories.value = data.categories;
         selectedCategoryId.value = data.selectedCategoryId || 'all';
+        
+        // učitaj custom feedove
+        if (data.customFeeds && Array.isArray(data.customFeeds)) {
+          // ukloni stare custom feedove
+          availableFeeds.value = availableFeeds.value.filter(f => !f.isCustom);
+          // dodaj spremljene custom feedove
+          availableFeeds.value.push(...data.customFeeds);
+        }
       }
     } catch (e) {
       console.error('Greška pri učitavanju postavki:', e);
@@ -168,10 +212,13 @@ export const useFeedsStore = defineStore('feeds', () => {
     selectedCategory,
     selectedFeeds,
     feedsByCategory,
+    customFeeds,
     addCategory,
     updateCategory,
     deleteCategory,
     selectCategory,
+    addCustomFeed,
+    removeCustomFeed,
     loadFromLocalStorage,
     saveToLocalStorage,
     exportData,

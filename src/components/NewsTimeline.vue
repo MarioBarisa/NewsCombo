@@ -4,6 +4,7 @@
   import { useFeedsStore } from '../stores/feedStore'
   import NewsCardCompact from './NewsCardCompact.vue'
   import NewsModal from './NewsModal.vue'
+  import FeedSwitcher from './FeedSwitcher.vue'
   
   const newsService = useNewsGlobal()
   const feedsStore = useFeedsStore()
@@ -19,13 +20,21 @@
   const loadingMore = ref(false)
   const selectedNews = ref(null)
   const isModalOpen = ref(false)
-  
+  const activeFeedId = ref(null) 
   const loading = computed(() => newsService.isLoading.value)
   const error = computed(() => newsService.error.value)
   const hasMore = computed(() => displayedNews.value.length < sortedNews.value.length)
   
+  // FILTRIRAJ VIJESTI PO ODABRANOM FEED-U
+  const filteredNews = computed(() => {
+    if (!activeFeedId.value) {
+      return allNews.value;
+    }
+    return allNews.value.filter(news => news.feedId === activeFeedId.value);
+  });
+  
   const sortedNews = computed(() => {
-    const sorted = [...allNews.value]
+    const sorted = [...filteredNews.value]
     return sorted.sort((a, b) => {
       const dateA = new Date(a.pubDate || 0)
       const dateB = new Date(b.pubDate || 0)
@@ -85,16 +94,12 @@
     }, 300)
   }
   
-  // Osvježi vijesti na osnovu odabrane kategorije
+  // refresh po adabranoj kategoriji
   const refreshNews = async () => {
     try {
-      // Učitaj postavke feedova
       feedsStore.loadFromLocalStorage()
       const categoryId = feedsStore.selectedCategoryId
-      
       console.log('Učitavam vijesti za kategoriju:', categoryId)
-      
-      // Dohvati 
       const fetchedNews = await newsService.fetchNews(categoryId)
       
       if (fetchedNews && fetchedNews.length > 0) {
@@ -161,6 +166,13 @@
     }
   }
   
+  // HANLDER za promjenu aktivnog feeda
+  const handleFeedChange = (feedId) => {
+    activeFeedId.value = feedId;
+    displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+    currentPage.value = 1;
+  };
+  
   const setupIntersectionObserver = () => {
     observer.value = new IntersectionObserver(
       (entries) => {
@@ -180,7 +192,7 @@
     }
   }
   
-  //gledanje za promjene kategorije
+  //gledaj promjene kategorije
   watch(
     () => feedsStore.selectedCategoryId,
     async (newCategoryId) => {
@@ -188,6 +200,7 @@
       displayedNews.value = []
       currentPage.value = 1
       allNews.value = []
+      activeFeedId.value = null 
       await refreshNews()
     }
   )
@@ -220,6 +233,9 @@
           </span>
         </p>
       </div>
+
+      <!-- Feed Switcher -->
+      <FeedSwitcher @feed-changed="handleFeedChange" />
   
       <!-- head -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
