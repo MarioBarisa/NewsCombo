@@ -38,8 +38,8 @@ export const useThemeStore = defineStore('theme', () => {
     'sunset'
   ]
 
-  // Trenutna tema - defaultno 'light'
-  const currentTheme = ref('light')
+  // Trenutna tema - defaultno 'dark'
+  const currentTheme = ref('dark')
 
   // Funkcija za postavljanje teme
   const setTheme = (themeName) => {
