@@ -8,11 +8,12 @@ class FeedService {
   constructor() {
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5min
+    this.maxCacheSize = 50; // max broj cache stavki
   }
 
   // uzmi sve feedove
   getAllFeeds() {
-    return [...FEED_SOURCES];
+    return FEED_SOURCES;
   }
 
   // uzmi isključivo uključene feedove
@@ -43,6 +44,9 @@ class FeedService {
   async fetchFeedNews(feed, count = 10) {
     const cacheKey = `${feed.id}_${count}`;
 
+    // očisti stare cache stavke
+    this.cleanExpiredCache();
+
     //cache provjera
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey);
@@ -71,7 +75,11 @@ class FeedService {
           domain: this.extractDomain(item.link),
         }));
 
-        // cache res
+        // cache res (provjeri limitu)
+        if (this.cache.size >= this.maxCacheSize) {
+          const firstKey = this.cache.keys().next().value;
+          this.cache.delete(firstKey);
+        }
         this.cache.set(cacheKey, {
           data: articles,
           timestamp: Date.now(),
@@ -118,34 +126,38 @@ class FeedService {
   }
 
   updateFeedConfig(feedId, enabled) {
-    const config = StorageService.loadFeedConfig() || {};
-
-    config[feedId] = {
-      enabled,
-      updatedAt: new Date().toISOString(),
-    };
-
-    return StorageService.saveFeedConfig(config);
+    return this.bulkUpdateFeeds([{ feedId, enabled }]);
   }
 
   // mega feed updejter
   bulkUpdateFeeds(updates) {
     const config = StorageService.loadFeedConfig() || {};
+    const timestamp = new Date().toISOString();
 
     updates.forEach(({ feedId, enabled }) => {
       config[feedId] = {
         enabled,
-        updatedAt: new Date().toISOString(),
+        updatedAt: timestamp,
       };
     });
 
     return StorageService.saveFeedConfig(config);
   }
 
-  // očisti chache
+  // očisti cache
   clearCache() {
     this.cache.clear();
     console.log("🗑️ Cache cleared");
+  }
+
+  // očisti stare cache stavke
+  cleanExpiredCache() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp >= this.cacheTimeout) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   extractDomain(url) {
