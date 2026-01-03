@@ -223,7 +223,7 @@
   </script>
   
   <template>
-    <div class="w-full max-w-4xl mx-auto px-4 py-8">
+    <div class="w-full max-w-4xl mx-auto px-4 py-8 overflow-hidden">
       <!-- Info o trenutnoj kategoriji -->
       <div v-if="feedsStore.selectedCategory" class="mb-6 p-4 bg-base-200 rounded-lg">
         <p class="text-sm">

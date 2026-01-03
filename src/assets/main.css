@@ -42,7 +42,14 @@
 html, body, #app {
   height: 100%;
   margin: 0;
+  overflow-x: hidden; /* spriječi horizontalni scroll na mobitelu */
   }
+
+/* timeline i kartice da se ne režu na mobitelu */
+.timeline,
+.timeline li {
+  overflow: hidden;
+}
   
   @media (max-width: 768px) {
     .container {

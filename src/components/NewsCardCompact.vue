@@ -75,12 +75,12 @@
   </script>
   
   <template>
-    <div class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-2xl">
-      <div class="card-body p-4">
-        <div class="flex gap-4">
+    <div class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-full overflow-hidden">
+      <div class="card-body p-3 sm:p-4">
+        <div class="flex gap-3 sm:gap-4 flex-col sm:flex-row">
           <!-- SLIKA VIJESTI -->
-          <div class="flex-shrink-0 cursor-pointer" @click="openNewsModal">
-            <figure class="relative overflow-hidden w-32 h-24 rounded-lg bg-base-300">
+          <div class="flex-shrink-0 cursor-pointer w-full sm:w-auto" @click="openNewsModal">
+            <figure class="relative overflow-hidden w-full sm:w-32 h-40 sm:h-24 rounded-lg bg-base-300">
               <img
                 v-if="imageUrl && !imageError"
                 :src="imageUrl"
@@ -98,7 +98,7 @@
           </div>
   
           <!-- SADRŽAJ -->
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 w-full">
             <!-- izvor badge -->
             <div class="mb-2">
               <span class="badge badge-primary badge-sm">
@@ -126,7 +126,7 @@
             </p>
   
             <!-- naredbe nad vijestima -->
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center flex-wrap gap-2">
               <div class="flex gap-1">
                 <button
                   @click="toggleLike"
