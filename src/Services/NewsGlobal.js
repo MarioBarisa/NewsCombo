@@ -58,6 +58,69 @@ const setCachedData = (data) => {
   }
 };
 
+// pomocnici za parsing RSS-a ( xml )
+const takeText = (item, selectors = [], fallback = '') => {
+  for (const selector of selectors) {
+    const value = item.querySelector(selector)?.textContent?.trim();
+    if (value) return value;
+  }
+  return fallback;
+};
+
+const takeLink = (item) => {
+  const linkText = takeText(item, ['link']);
+  if (linkText) return linkText;
+  const linkEl = item.querySelector('link[href]');
+  return linkEl?.getAttribute('href') || '#';
+};
+
+// ?
+const cleanDescription = (text) => {
+  return (text || '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<\/?.*?>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .substring(0, 300);
+};
+
+const firstAttr = (el, names = ['url', 'href']) => {
+  if (!el) return null;
+  for (const name of names) {
+    const val = el.getAttribute(name);
+    if (val) return val;
+  }
+  return null;
+};
+
+const extractThumbnail = (item, rawDescription) => {
+  // prvo se treba pronaci enclosure s image content-type
+  const enclosure = item.querySelector('enclosure');
+  const enclosureType = enclosure?.getAttribute('type')?.toLowerCase() || '';
+  const enclosureUrl = firstAttr(enclosure);
+  if (enclosureUrl && (!enclosureType || enclosureType.includes('image'))) {
+    return enclosureUrl;
+  }
+
+  // ostali media tagovi koje neki feedovi koriste
+  const mediaCandidate = item.querySelector(
+    'media\\:content[url], media\\:thumbnail[url], media\\:group media\\:content, content[url], image[url], thumbnail[url]'
+  );
+  const mediaUrl = firstAttr(mediaCandidate);
+  if (mediaUrl) return mediaUrl;
+
+  // fallback: prva slika iz HTML opisa > ( da ne bude empty )
+  const imgMatch = rawDescription?.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgMatch && imgMatch[1]) {
+    return imgMatch[1];
+  }
+
+  return null;
+};
+
 // rss parsing
 const parseRSSFeed = (xmlText, feed) => {
   try {
@@ -76,42 +139,14 @@ const parseRSSFeed = (xmlText, feed) => {
     }
     
     return items.slice(0, 10).map(item => {
-      const title = item.querySelector('title')?.textContent?.trim() || 'Bez naslova';
-      let description = item.querySelector('description')?.textContent?.trim() || '';
-      let link = item.querySelector('link')?.textContent?.trim() || '';
-      let pubDate = item.querySelector('pubDate')?.textContent?.trim() || '';
-      let thumbnail = null;
-      
-      if (!link) {
-        const linkEl = item.querySelector('link[href]');
-        link = linkEl?.getAttribute('href') || '#';
-      }
-      if (!pubDate) {
-        pubDate = item.querySelector('updated, published')?.textContent?.trim() || new Date().toISOString();
-      }
-      if (!description) {
-        description = item.querySelector('summary, content')?.textContent?.trim() || '';
-      }
-  
-      const enclosure = item.querySelector('enclosure[url]');
-      if (enclosure) {
-        thumbnail = enclosure.getAttribute('url');
-      } else {
-        const mediaContent = item.querySelector('media\\:content, content[url]');
-        if (mediaContent) {
-          thumbnail = mediaContent.getAttribute('url');
-        }
-      }
-      
-      // miči smeće
-      description = description
-        .replace(/<\/?[^>]+(>|$)/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .substring(0, 300);
-      
+      const title = takeText(item, ['title'], 'Bez naslova');
+      const link = takeLink(item);
+      const pubDate = takeText(item, ['pubDate', 'updated', 'published'], new Date().toISOString());
+      const rawDescription = takeText(item, ['description', 'summary', 'content'], '');
+      const thumbnail = extractThumbnail(item, rawDescription);
+      const description = cleanDescription(rawDescription);
+      const guid = takeText(item, ['guid'], '') || link || `${feed.name}-${Date.now()}-${Math.random()}`;
+
       return {
         title,
         description,
@@ -122,7 +157,7 @@ const parseRSSFeed = (xmlText, feed) => {
         category: feed.category || 'general',
         feedId: feed.id, // Dodan feedId
         thumbnail,
-        guid: link || `${feed.name}-${Date.now()}-${Math.random()}`
+        guid
       };
     });
     
@@ -184,12 +219,15 @@ const sortAndUpdateNews = () => {
   const allItems = Object.values(newsBySource.value).flat();
   
   // ukloni duplikate
-  const unique = allItems.reduce((acc, item) => {
-    if (!acc.find(i => i.link === item.link)) {
-      acc.push(item);
+  const seen = new Set();
+  const unique = [];
+  allItems.forEach(item => {
+    const key = item.guid || item.link;
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      unique.push(item);
     }
-    return acc;
-  }, []);
+  });
   
   // kronologija
   unique.sort((a, b) => {
