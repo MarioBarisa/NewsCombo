@@ -22,12 +22,10 @@ export const useFeedsStore = defineStore('feeds', () => {
  { id: 'feed_vecernji', name: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', category: 'hrvatska', isCustom: false },
  { id: 'feed_24sata', name: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', category: 'hrvatska', isCustom: false },
  { id: 'feed_bug_hr', name: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', category: 'tech', isCustom: false },
- { id: 'feed_netokracija', name: 'Netokracija', url: 'https://www.netokracija.com/feed', domain: 'netokracija.com', category: 'tech', isCustom: false },
  
  // world
  { id: 'feed_bbc', name: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', category: 'world', isCustom: false },
  { id: 'feed_aljazeera', name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', category: 'world', isCustom: false },
- { id: 'feed_ap', name: 'Associated Press', url: 'https://feeds.apnews.com/rss/topnews', domain: 'apnews.com', category: 'world', isCustom: false },
  
  // it
  { id: 'feed_techcrunch', name: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', category: 'tech', isCustom: false },

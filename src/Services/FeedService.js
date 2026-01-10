@@ -1,3 +1,8 @@
+/*
+
+//FEED SERVICE SE VIŠE NE KORISTI -> SADA JE LIVE NewsGlobal.js
+//UKINUT FEEDSERVICE.JS ZBOG OVISNOSTI NA NewsGlobal.js
+
 import { FEED_SOURCES, FEED_CATEGORIES } from "@/config/feedSources";
 import StorageService from "./StorageService";
 
@@ -195,4 +200,4 @@ class FeedService {
   }
 }
 
-export default new FeedService();
+export default new FeedService();*/
