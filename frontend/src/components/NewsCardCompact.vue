@@ -207,5 +207,15 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  @media (max-width: 375px) {
+  .btn-xs {
+    padding: 0.25rem 0.5rem; 
+    font-size: 0.75rem; 
+  }
+  .line-clamp-2 {
+    -webkit-line-clamp: 3;
+  }
+}
   </style>
   

@@ -120,4 +120,14 @@ onMounted(() => {
   width: 1px;
   height: 1.5rem;
 }
+
+@media (max-width: 375px) {
+  .feed-switcher {
+    padding: 0.25rem; 
+  }
+  .alert {
+    padding: 0.5rem; 
+    font-size: 0.875rem; 
+  }
+}
 </style>

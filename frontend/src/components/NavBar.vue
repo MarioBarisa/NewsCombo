@@ -34,5 +34,19 @@
 </template>
 
 <script setup>
-// Nema potrebe za props-ima
 </script>
+
+<style>
+  @media (max-width: 375px) {
+  .navbar .btn {
+    padding: 0.25rem 0.5rem; 
+  }
+  .navbar .text-xl {
+    font-size: 1rem; /*font manji */
+  }
+  .navbar .w-10 {
+    width: 2.5rem; /* manji avatar*/
+    height: 2.5rem;
+  }
+}
+</style>

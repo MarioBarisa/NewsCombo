@@ -633,4 +633,16 @@ onUnmounted(() => {
   font-size: 1.125rem;
   line-height: 1.75;
 }
+
+@media (max-width: 375px) {
+  .text-4xl {
+    font-size: 1.25rem; /* manji naslov na telefonima */
+  }
+  .prose-lg {
+    font-size: 0.875rem; /* manji tekst članka */
+  }
+  .flex-wrap {
+    gap: 0.5rem; /* manji razmak između meta info */
+  }
+}
 </style>
