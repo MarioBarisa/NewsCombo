@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import newsApi from '../api/newsApi.js';
 
 export const useFeedsStore = defineStore('feeds', () => {
   const categories = ref([
@@ -16,7 +17,8 @@ export const useFeedsStore = defineStore('feeds', () => {
   const selectedCategoryId = ref('all');
   const isLoading = ref(false);
 
-  const availableFeeds = ref([
+  //ne koristi se više zbog monga
+  const HARDCODEDavailableFeeds = ref([
  // hr
  { id: 'feed_index_hr', name: 'Index.hr', url: 'https://www.index.hr/rss', domain: 'index.hr', category: 'hrvatska', isCustom: false },
  { id: 'feed_vecernji', name: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', category: 'hrvatska', isCustom: false },
@@ -39,6 +41,35 @@ export const useFeedsStore = defineStore('feeds', () => {
  // posao
  { id: 'feed_ft', name: 'Financial Times', url: 'https://www.ft.com/?format=rss', domain: 'ft.com', category: 'business', isCustom: false },
   ]);
+
+  const availableFeeds = ref([]);
+
+  //funckija za učitavanje feedova sa backenda
+  const loadFeedsFromBackend = async () => {
+    isLoading.value = true;
+    try {
+      const response = await newsApi.getAllFeeds();
+
+      availableFeeds.value = response.data.map(
+        feed => ({
+          id: `feed_${feed.id}`,
+          name: feed.naziv,
+          url: feed.url,
+          domain: new URL(feed.url).hostname.replace('www.', ''),
+          category: feed.kategorija || 'other',
+          isCustom: feed.isCustom || false,
+        })
+      )
+      
+    } catch (error) {
+      console.log("Greška pri fetchanju mogno feedova, hardcoded se koriste.", error);
+    }finally {
+      isLoading.value = false;
+    }
+
+    availableFeeds.value = HARDCODEDavailableFeeds.value;
+    
+  }
 
   // korisnikov custom RSS izvor
   const addCustomFeed = (name, url, category = 'custom') => {
@@ -220,6 +251,7 @@ export const useFeedsStore = defineStore('feeds', () => {
     loadFromLocalStorage,
     saveToLocalStorage,
     exportData,
-    importData
+    importData,
+    loadFeedsFromBackend
   };
 });
