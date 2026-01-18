@@ -386,7 +386,7 @@ export default function createNewsRoutes(db) {
     }
   });
     
-    /*
+    
 
   // POST /clanci - dodaj novi članak
   router.post("/clanci", async (req, res) => {
@@ -465,7 +465,7 @@ export default function createNewsRoutes(db) {
     } catch (error) {
       res.status(400).json({ error: "Greška pri ažuriranju članka", details: error.message });
     }
-  }); */
+  }); 
 
   // PATCH /clanci/:id/procitano - označi članak kao pročitan
   router.patch("/clanci/:id/procitano", async (req, res) => {
