@@ -63,11 +63,12 @@ export const useFeedsStore = defineStore('feeds', () => {
       
     } catch (error) {
       console.log("Greška pri fetchanju mogno feedova, hardcoded se koriste.", error);
+      availableFeeds.value = HARDCODEDavailableFeeds.value;
     }finally {
       isLoading.value = false;
     }
 
-    availableFeeds.value = HARDCODEDavailableFeeds.value;
+   
     
   }
 
