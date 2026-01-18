@@ -9,7 +9,17 @@ const PORT = 3005;
 import { connectToDatabase } from './mongo.js';
 import createNewsRoutes from "./routes/newsRoutes.js";
 
+const logger = (req, res, next) => {
+    const timeStamp = new Date().toISOString();
+    console.log("Vrijeme: ", timeStamp);
+    console.log("Ruta", req.originalUrl);
+    console.log(req.method);
+    console.log(req.headers);
+    console.log(req.body);
+    next();
+};
 
+app.use(logger);
 
 
 async function startNC() {
@@ -25,6 +35,8 @@ async function startNC() {
         process.exit(1);
     }
 }
+
+
 
 startNC();
 
