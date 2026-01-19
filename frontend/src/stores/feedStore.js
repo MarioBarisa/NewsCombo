@@ -73,15 +73,15 @@ export const useFeedsStore = defineStore('feeds', () => {
   const addCustomFeed = async (name, url, category = 'custom') => {
     try {
       const domain = new URL(url).hostname.replace('www.', '');
-      const newFeed = {
-        id: `feed_custom_${Date.now()}`, //mozda zamjena za inkrementalni int???
-        naziv,
-        url,
-        domain,
-        kategorija,
-        isCustom: true
-      };
-      
+        const newFeed = {
+                  id: `feed_custom_${Date.now()}`,
+                  naziv: name,           
+                  url,
+                  domain,
+                  kategorija: category,  
+                  isCustom: true
+                };
+
      const response = await newsApi.createFeed(newFeed);
       
       availableFeeds.value.push(newFeed);

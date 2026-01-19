@@ -93,18 +93,20 @@
       customFeedCategory.value = 'custom';
     };
 
-    const confirmAddCustomFeed = () => {
+    const confirmAddCustomFeed = async () => {
       if (customFeedName.value.trim() && customFeedUrl.value.trim()) {
         try {
           // validacija URL-a
           new URL(customFeedUrl.value);
-          feedsStore.addCustomFeed(customFeedName.value, customFeedUrl.value, customFeedCategory.value);
+         await feedsStore.addCustomFeed(customFeedName.value, customFeedUrl.value, customFeedCategory.value);
           cancelAddingCustomFeed();
         } catch (error) {
           alert('Molimo unesite ispravan URL (npr. https://example.com/feed)');
         }
       }
     };
+
+    
 
     const confirmDeleteCustomFeed = (feedId) => {
       if (confirm('Jeste li sigurni da želite obrisati ovaj custom feed?')) {
