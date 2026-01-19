@@ -4,8 +4,6 @@ export default function createNewsRoutes(db) {
   const router = express.Router();
 
   // INICIJALNI PODACI 
-  
-
   const inicijalniRSSFeedovi = [
     { id: '1', naziv: 'Index.hr', url: 'https://www.index.hr/rss', domain: 'index.hr', kategorija: 'hrvatska', isCustom: false },
     { id: '2', naziv: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', kategorija: 'hrvatska', isCustom: false },

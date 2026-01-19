@@ -67,27 +67,32 @@ export const useFeedsStore = defineStore('feeds', () => {
     }finally {
       isLoading.value = false;
     }
-
-   
-    
   }
 
   // korisnikov custom RSS izvor
-  const addCustomFeed = (name, url, category = 'custom') => {
-    const domain = new URL(url).hostname.replace('www.', '');
-    const newFeed = {
-      id: `feed_custom_${Date.now()}`,
-      name,
-      url,
-      domain,
-      category,
-      isCustom: true,
-      createdAt: new Date().toISOString()
-    };
-    availableFeeds.value.push(newFeed);
-    saveToLocalStorage();
-    return newFeed;
+  const addCustomFeed = async (name, url, category = 'custom') => {
+    try {
+      const domain = new URL(url).hostname.replace('www.', '');
+      const newFeed = {
+        id: `feed_custom_${Date.now()}`, //mozda zamjena za inkrementalni int???
+        naziv,
+        url,
+        domain,
+        kategorija,
+        isCustom: true
+      };
+      
+     const response = await newsApi.createFeed(newFeed);
+      
+      availableFeeds.value.push(newFeed);
+      saveToLocalStorage();
+      return newFeed;
+    } catch (error) {
+      console.error('Greška pri dodavanju custom feeda:', error);
+      throw error;
+    }
   };
+  
 
   // obriši custom feed
   const removeCustomFeed = (feedId) => {
