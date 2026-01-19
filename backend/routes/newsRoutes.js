@@ -7,12 +7,28 @@ export default function createNewsRoutes(db) {
   
 
   const inicijalniRSSFeedovi = [
-    { id: 1, naziv: "BBC News", url: "https://feeds.bbc.co.uk/news/rss.xml", kategorija: "Globalne vijesti" },
-    { id: 2, naziv: "HRT Vijesti", url: "https://hrt.hr/vijesti/rss", kategorija: "HR vijesti" },
-    { id: 3, naziv: "TechCrunch", url: "https://techcrunch.com/feed/", kategorija: "Tech" },
-    { id: 4, naziv: "The Verge", url: "https://www.theverge.com/rss/index.xml", kategorija: "Tech" },
-    { id: 5, naziv: "ESPN", url: "https://www.espn.com/espn/rss", kategorija: "Sport" },
+    { id: '1', naziv: 'Index.hr', url: 'https://www.index.hr/rss', domain: 'index.hr', kategorija: 'hrvatska', isCustom: false },
+    { id: '2', naziv: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', kategorija: 'hrvatska', isCustom: false },
+    { id: '3', naziv: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', kategorija: 'hrvatska', isCustom: false },
+    { id: '4', naziv: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', kategorija: 'tech', isCustom: false },
+    
+    // world
+    { id: '5', naziv: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', kategorija: 'world', isCustom: false },
+    { id: '6', naziv: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', kategorija: 'world', isCustom: false },
+    
+    // it
+    { id: '7', naziv: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', kategorija: 'tech', isCustom: false },
+    { id: '8', naziv: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', domain: 'arstechnica.com', kategorija: 'tech', isCustom: false },
+    { id: '9', naziv: 'Hacker News', url: 'https://hnrss.org/frontpage', domain: 'news.ycombinator.com', kategorija: 'tech', isCustom: false },
+    { id: '10', naziv: 'MIT Technology Review', url: 'https://www.technologyreview.com/feed/', domain: 'technologyreview.com', kategorija: 'tech', isCustom: false },
+    
+    // znanost
+    { id: '11', naziv: 'Aeon', url: 'https://aeon.co/feed.rss', domain: 'aeon.co', kategorija: 'science', isCustom: false },
+    
+    // posao
+    { id: '12', naziv: 'Financial Times', url: 'https://www.ft.com/?format=rss', domain: 'ft.com', kategorija: 'business', isCustom: false },
   ];
+
 
   const inicijalneGrupe = [
     { id: 1, naziv: "Tech", opis: "Tehnološke vijesti", feedIds: [3, 4] },
