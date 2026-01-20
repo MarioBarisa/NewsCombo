@@ -70,43 +70,69 @@ export const useFeedsStore = defineStore('feeds', () => {
   }
 
   // korisnikov custom RSS izvor
-  const addCustomFeed = async (name, url, category = 'custom') => {
+  const addCustomFeed = async (name, url, category = "custom") => {
+    isLoading.value = true;
     try {
-      const domain = new URL(url).hostname.replace('www.', '');
-        const newFeed = {
-                  id: `feed_custom_${Date.now()}`,
-                  naziv: name,           
-                  url,
-                  domain,
-                  kategorija: category,  
-                  isCustom: true
-                };
+      const domain = new URL(url).hostname.replace("www.", "");
 
-     const response = await newsApi.createFeed(newFeed);
-      
-       //availableFeeds.value.push(newFeed);
-      //saveToLocalStorage();
-      //return newFeed;
+      const newFeed = {
+        naziv: name,
+        url,
+        domain,
+        kategorija: category,
+        isCustom: true,
+      };
+
+      const response = await newsApi.createFeed(newFeed);
+
+      // Mapiranje odgovora
+      const createdFeed = {
+        id: `feed_${response.data.noviId}`,
+        name: response.data.naziv,
+        url: response.data.url,
+        domain: domain,
+        category: response.data.kategorija,
+        isCustom: true,
+      };
+
+      availableFeeds.value.push(createdFeed);
+      return createdFeed;
     } catch (error) {
-      console.error('Greška pri dodavanju custom feeda:', error);
+      console.error("Greška pri dodavanju custom feeda:", error);
       throw error;
+    } finally {
+      isLoading.value = false;
     }
   };
   
+  
 
   // obriši custom feed
-  const removeCustomFeed = (feedId) => {
-    const index = availableFeeds.value.findIndex(f => f.id === feedId && f.isCustom);
-    if (index !== -1) {
-      // ukloni feed iz svih kategorija
+  const removeCustomFeed = async (feedId) => {
+    isLoading.value = true;
+    try {
+      const numericId = parseInt(feedId.replace('feed_', ''));
+      
+      const response = await newsApi.deleteFeed(numericId);
+      
+      // Ukloni iz local state-a
+      availableFeeds.value = availableFeeds.value.filter(
+        f => f.id !== feedId
+      );
+      
+      // Ukloni iz kategorija
       categories.value.forEach(cat => {
         cat.feeds = cat.feeds.filter(f => f.id !== feedId);
       });
-      availableFeeds.value.splice(index, 1);
-      saveToLocalStorage();
-      return true;
+      
+      return response.data;
+      
+    } catch (error) {
+      console.error('Greška pri brisanju feeda:', error);
+      throw error;
+    } finally {
+      isLoading.value = false;
     }
-    return false;
   };
 
   // dodaj  kategoriju
@@ -134,6 +160,8 @@ export const useFeedsStore = defineStore('feeds', () => {
       return category;
     }
   };
+
+  
 
   // obriši kategoriju
   const deleteCategory = (categoryId) => {
