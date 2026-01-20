@@ -84,9 +84,9 @@ export const useFeedsStore = defineStore('feeds', () => {
 
      const response = await newsApi.createFeed(newFeed);
       
-      availableFeeds.value.push(newFeed);
-      saveToLocalStorage();
-      return newFeed;
+       //availableFeeds.value.push(newFeed);
+      //saveToLocalStorage();
+      //return newFeed;
     } catch (error) {
       console.error('Greška pri dodavanju custom feeda:', error);
       throw error;
