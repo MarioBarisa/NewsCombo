@@ -11,10 +11,9 @@ const themeStore = useThemeStore()
 const feedsStore = useFeedsStore();
 
 // Inicijaliziraj temu pri učitavanju aplikacije
-onMounted(() => {
+onMounted(async() => {
   themeStore.initTheme()
-  feedsStore.loadFromLocalStorage()
-  feedsStore.loadFeedsFromBackend()
+  await feedsStore.initializeStore();
 })
 </script>
 

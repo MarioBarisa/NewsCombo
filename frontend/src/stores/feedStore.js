@@ -134,57 +134,185 @@ export const useFeedsStore = defineStore('feeds', () => {
       isLoading.value = false;
     }
   };
-
-  // dodaj  kategoriju
-  const addCategory = (categoryName, selectedFeedIds = []) => {
-    const newCategory = {
-      id: `cat_${Date.now()}`,
-      name: categoryName,
-      description: `Prilagođena kategorija: ${categoryName}`,
-      feeds: availableFeeds.value.filter(f => selectedFeedIds.includes(f.id)),
-      isDefault: false,
-      createdAt: new Date().toISOString()
-    };
-    categories.value.push(newCategory);
-    saveToLocalStorage();
-    return newCategory;
-  };
-
-  // uredi kategoriju
-  const updateCategory = (categoryId, updatedName, selectedFeedIds = []) => {
-    const category = categories.value.find(c => c.id === categoryId);
-    if (category && !category.isDefault) {
-      category.name = updatedName;
-      category.feeds = availableFeeds.value.filter(f => selectedFeedIds.includes(f.id));
-      saveToLocalStorage();
-      return category;
+  //učitaj kategorije
+  
+  const loadCategoriesFromBackend = async () => {
+    isLoading.value = true;
+    try {
+      const response = await newsApi.getAllGropus();
+      
+      // Mapiranje grupa iz backenda u lokalni format kategorija
+      const backendCategories = response.data.map(grupa => ({
+        id: `cat_${grupa.id}`,
+        name: grupa.naziv,
+        description: grupa.opis,
+        feeds: availableFeeds.value.filter(f => 
+          grupa.feedIds.includes(parseInt(f.id.replace('feed_', '')))
+        ),
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        backendId: grupa.id // čuvamo backend ID za kasnije operacije
+      }));
+      
+      // Dodaj custom kategorije nakon default "Svi feedovi" kategorije
+      categories.value = [
+        categories.value[0], // zadrži "Svi feedovi"
+        ...backendCategories
+      ];
+      
+    } catch (error) {
+      console.error("Greška pri učitavanju kategorija s backenda:", error);
+    } finally {
+      isLoading.value = false;
     }
   };
+  
+
+
+  // dodaj  kategoriju
+  const addCategory = async (categoryName, selectedFeedIds = []) => {
+    isLoading.value = true;
+    try {
+      // Konvertiraj feed ID-ove u numerički format za backend
+      const numericFeedIds = selectedFeedIds.map(id => 
+        parseInt(id.replace('feed_', ''))
+      );
+      
+      const newGroupData = {
+        naziv: categoryName,
+        opis: `Prilagođena kategorija: ${categoryName}`,
+        feedIds: numericFeedIds
+      };
+      
+      const response = await newsApi.createGroup(newGroupData);
+      
+      // Dodaj u lokalno stanje
+      const newCategory = {
+        id: `cat_${response.data.noviId}`,
+        name: categoryName,
+        description: `Prilagođena kategorija: ${categoryName}`,
+        feeds: availableFeeds.value.filter(f => selectedFeedIds.includes(f.id)),
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        backendId: response.data.noviId
+      };
+      
+      categories.value.push(newCategory);
+      return newCategory;
+      
+    } catch (error) {
+      console.error("Greška pri dodavanju kategorije:", error);
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+  
+
+  // uredi kategoriju
+  const updateCategory = async (categoryId, updatedName, selectedFeedIds = []) => {
+    isLoading.value = true;
+    try {
+      const category = categories.value.find(c => c.id === categoryId);
+      
+      if (!category || category.isDefault) {
+        throw new Error("Kategorija nije pronađena ili je default kategorija");
+      }
+      
+      // Konvertiraj feed ID-ove u number 
+      const numericFeedIds = selectedFeedIds.map(id => 
+        parseInt(id.replace('feed_', ''))
+      );
+      
+      const backendId = category.backendId || parseInt(categoryId.replace('cat_', ''));
+      
+      const updatedGroupData = {
+        naziv: updatedName,
+        opis: `Prilagođena kategorija: ${updatedName}`,
+        feedIds: numericFeedIds
+      };
+      
+      await newsApi.updateGroup(backendId, updatedGroupData);
+      
+      // Ažuriraj lokalno stanje
+      category.name = updatedName;
+      category.feeds = availableFeeds.value.filter(f => selectedFeedIds.includes(f.id));
+      
+      return category;
+      
+    } catch (error) {
+      console.error("Greška pri ažuriranju kategorije:", error);
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+  
 
   
 
-  // obriši kategoriju
-  const deleteCategory = (categoryId) => {
-    const index = categories.value.findIndex(c => c.id === categoryId && !c.isDefault);
-    if (index !== -1) {
-      categories.value.splice(index, 1);
+  const deleteCategory = async (categoryId) => {
+    // PROVJERA odmah da li je default
+    const category = categories.value.find(c => c.id === categoryId);
+    
+    if (!category) {
+      console.warn("Kategorija nije pronađena");
+      return false;
+    }
+    
+    if (category.isDefault) {
+      console.warn("Ne možeš obrisati default kategoriju");
+      return false;
+    }
+    
+    isLoading.value = true;
+    
+    try {
+      //  backend ID
+      const backendId = category.backendId || parseInt(categoryId.replace('cat_', ''));
+      
+      console.log(`Brišem grupu s backend ID: ${backendId}`);
+      
+      // brisanje s backenda
+      const response = await newsApi.deleteGroup(backendId);
+      console.log('Backend odgovor:', response.data);
+      
+      // Odmah obriši iz lokalnog stanja TEK NAKON ( da nebi bilo conflicta ) uspješnog brisanja
+      const index = categories.value.findIndex(c => c.id === categoryId);
+      if (index !== -1) {
+        categories.value.splice(index, 1);
+      }
       if (selectedCategoryId.value === categoryId) {
         selectedCategoryId.value = 'all';
+        localStorage.setItem('selectedCategoryId', 'all');
       }
-      saveToLocalStorage();
+      
       return true;
+      
+    } catch (error) {
+      console.error("Greška pri brisanju kategorije:", error);
+      console.error("Error details:", error.response?.data || error.message);
+      
+      // ako nije obrisano sa mongo, ne briši sa lokale
+      throw error;
+      
+    } finally {
+      isLoading.value = false;
     }
-    return false;
   };
+  
+  
 
   const selectCategory = (categoryId) => {
     if (categories.value.some(c => c.id === categoryId)) {
       selectedCategoryId.value = categoryId;
-      saveToLocalStorage();
+      // Spremi samo odabranu kategoriju u localStorage
+      localStorage.setItem('selectedCategoryId', categoryId);
       return true;
     }
     return false;
   };
+  
 
   const selectedCategory = computed(() => {
     return categories.value.find(c => c.id === selectedCategoryId.value) || categories.value[0];
@@ -250,22 +378,72 @@ export const useFeedsStore = defineStore('feeds', () => {
     }
   };
 
-  const exportData = () => {
-    return {
-      categories: categories.value.filter(c => !c.isDefault),
-      selectedCategoryId: selectedCategoryId.value
-    };
-  };
 
-  const importData = (data) => {
-    if (data.categories && Array.isArray(data.categories)) {
-      categories.value = [
-        categories.value[0],
-        ...data.categories
-      ];
-      saveToLocalStorage();
+  const initializeStore = async () => {
+    isLoading.value = true;
+    try {
+      //  učitaj feedove
+      await loadFeedsFromBackend();
+      
+      //  učitaj kategorije/grupe
+      await loadCategoriesFromBackend();
+      
+      // Učitaj odabranu kategoriju iz localStorage-a
+      const savedCategoryId = localStorage.getItem('selectedCategoryId');
+      if (savedCategoryId && categories.value.some(c => c.id === savedCategoryId)) {
+        selectedCategoryId.value = savedCategoryId;
+      }
+      
+    } catch (error) {
+      console.error("Greška pri inicijalizaciji store-a:", error);
+    } finally {
+      isLoading.value = false;
     }
   };
+  
+
+  const exportData = async () => {
+    try {
+      const [feedsResponse, groupsResponse] = await Promise.all([
+        newsApi.getAllFeeds(),
+        newsApi.getAllGropus()
+      ]);
+      
+      return {
+        feedovi: feedsResponse.data,
+        grupe: groupsResponse.data,
+        exportedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error("Greška pri exportu podataka:", error);
+      throw error;
+    }
+  };
+  
+  const importData = async (data) => {
+    isLoading.value = true;
+    try {
+      if (data.grupe && Array.isArray(data.grupe)) {
+        // Importaj grupe
+        for (const grupa of data.grupe) {
+          await newsApi.createGroup({
+            naziv: grupa.naziv,
+            opis: grupa.opis,
+            feedIds: grupa.feedIds
+          });
+        }
+        
+        // Ponovno učitaj sve s backenda
+        await initializeStore();
+      }
+    } catch (error) {
+      console.error("Greška pri importu podataka:", error);
+      throw error;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+  
 
   return {
     categories,
@@ -282,10 +460,12 @@ export const useFeedsStore = defineStore('feeds', () => {
     selectCategory,
     addCustomFeed,
     removeCustomFeed,
-    loadFromLocalStorage,
-    saveToLocalStorage,
+    loadFromLocalStorage, // možeš zadržati za kompatibilnost
+    saveToLocalStorage, // možeš zadržati za kompatibilnost
     exportData,
     importData,
-    loadFeedsFromBackend
-  };
+    loadFeedsFromBackend,
+    loadCategoriesFromBackend, // NOVO
+    initializeStore // NOVO - koristiti pri pokretanju app-a
+  };  
 });
