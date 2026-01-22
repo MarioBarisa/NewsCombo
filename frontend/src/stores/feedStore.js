@@ -74,7 +74,7 @@ export const useFeedsStore = defineStore('feeds', () => {
     isLoading.value = true;
     try {
       const domain = new URL(url).hostname.replace("www.", "");
-
+  
       const newFeed = {
         naziv: name,
         url,
@@ -82,21 +82,18 @@ export const useFeedsStore = defineStore('feeds', () => {
         kategorija: category,
         isCustom: true,
       };
-
+  
       const response = await newsApi.createFeed(newFeed);
-
-      // Mapiranje odgovora
-      const createdFeed = {
-        id: `feed_${response.data.noviId}`,
-        name: response.data.naziv,
-        url: response.data.url,
-        domain: domain,
-        category: response.data.kategorija,
-        isCustom: true,
+      
+      console.log('✅ Feed kreiran na backendu:', response.data);
+      await refreshStore();
+      
+      // return ID novog feeda
+      return {
+        success: true,
+        feedId: response.data.noviId || response.data.id
       };
-
-      availableFeeds.value.push(createdFeed);
-      return createdFeed;
+      
     } catch (error) {
       console.error("Greška pri dodavanju custom feeda:", error);
       throw error;
@@ -104,6 +101,7 @@ export const useFeedsStore = defineStore('feeds', () => {
       isLoading.value = false;
     }
   };
+  
   
   
 
@@ -124,6 +122,8 @@ export const useFeedsStore = defineStore('feeds', () => {
       categories.value.forEach(cat => {
         cat.feeds = cat.feeds.filter(f => f.id !== feedId);
       });
+      
+      await refreshStore();
       
       return response.data;
       
@@ -183,9 +183,11 @@ export const useFeedsStore = defineStore('feeds', () => {
         opis: `Prilagođena kategorija: ${categoryName}`,
         feedIds: numericFeedIds
       };
-      
+
       const response = await newsApi.createGroup(newGroupData);
       
+      await refreshStore();
+
       // Dodaj u lokalno stanje
       const newCategory = {
         id: `cat_${response.data.noviId}`,
@@ -233,6 +235,8 @@ export const useFeedsStore = defineStore('feeds', () => {
       };
       
       await newsApi.updateGroup(backendId, updatedGroupData);
+
+      await refreshStore();
       
       // Ažuriraj lokalno stanje
       category.name = updatedName;
@@ -276,6 +280,8 @@ export const useFeedsStore = defineStore('feeds', () => {
       // brisanje s backenda
       const response = await newsApi.deleteGroup(backendId);
       console.log('Backend odgovor:', response.data);
+
+      await refreshStore();
       
       // Odmah obriši iz lokalnog stanja TEK NAKON ( da nebi bilo conflicta ) uspješnog brisanja
       const index = categories.value.findIndex(c => c.id === categoryId);
@@ -369,7 +375,21 @@ const loadFromLocalStorage = () => {
   }
 };
 
-  
+const refreshStore = async () => {
+  isLoading.value = true;
+  try {
+    console.log(' Store REFRESH');
+    
+    await loadFeedsFromBackend();
+    await loadCategoriesFromBackend();
+    
+    console.log(' Store REFRESHAN');
+  } catch (error) {
+    console.error(' Greška pri REFRESHU store-a:', error);
+  } finally {
+    isLoading.value = false;
+  }
+}; 
 
 
   const initializeStore = async () => {
@@ -459,6 +479,7 @@ const loadFromLocalStorage = () => {
     importData,
     loadFeedsFromBackend,
     loadCategoriesFromBackend, // NOVO
-    initializeStore // NOVO - koristiti pri pokretanju app-a
+    initializeStore,
+    refreshStore// NOVO - koristiti pri pokretanju app-a
   };  
 });

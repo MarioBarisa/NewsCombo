@@ -141,7 +141,8 @@ export default function createNewsRoutes(db) {
         id: noviId,
         naziv: naziv,
         url: url,
-        kategorija: kategorija
+        kategorija: kategorija,
+        isCustom: "true"
       });
 
       res.status(201).json({ 

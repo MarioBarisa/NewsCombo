@@ -37,7 +37,7 @@ const getCachedData = () => {
       const now = Date.now();
       
       if (now - timestamp < CACHE_DURATION) {
-        console.log('📦 Koristim keširane vijesti');
+        console.log('USE keširane vijesti');
         return data;
       }
     }
@@ -54,7 +54,7 @@ const setCachedData = (data) => {
       timestamp: Date.now()
     }));
   } catch (err) {
-    console.warn('Ne mogu spremiti u cache:', err);
+    console.warn('Ne mogu save-at u cache:', err);
   }
 };
 
@@ -248,7 +248,7 @@ const fetchNews = async (categoryId = null) => {
     // pozainski refrash
     setTimeout(() => {
       if (!isLoading.value) {
-        console.log('🔄 news refresh');
+        console.log('NEWS REFRESH');
         fetchNewsFresh(categoryId);
       }
     }, 500);
@@ -312,14 +312,14 @@ const fetchNewsFresh = async (categoryId = null) => {
           console.warn(` ${feed.name}: 0 news -> makni iz RSS array jer ne radi`);
         }
       } catch (err) {
-        console.warn(`❌ ${feed.name}: ${err.message}`);
+        console.warn(`ERROR! :-> ${feed.name}: ${err.message}`);
       } finally {
         completedCount++;
         loadingProgress.value = Math.round((completedCount / totalFeeds) * 100);
       }
     };
 
-    console.log(`⚡ Load ->>> ${totalFeeds} izvora paralelno...`);
+    console.log(`Load ->>> ${totalFeeds} izvora paralelno...`);
     await Promise.allSettled(feedsToFetch.map(fetchSingleFeed));
 
     // Finalno sortiranje
@@ -337,7 +337,7 @@ const fetchNewsFresh = async (categoryId = null) => {
     return cachedNews.value;
 
   } catch (err) {
-    console.error('❌ Kritična greška:', err);
+    console.error('ERROR! :-> ', err);
     error.value = 'Greška pri dohvaćanju vijesti';
     cachedNews.value = getMockNews();
     return cachedNews.value;
