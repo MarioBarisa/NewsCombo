@@ -19,9 +19,11 @@
     
     const allFeedsByDomain = computed(() => feedsStore.feedsByCategory);
     
-    onMounted(() => {
-      feedsStore.loadFromLocalStorage();
-    });
+    onMounted(async () => {
+  if (feedsStore.categories.length <= 1) {
+    await feedsStore.initializeStore();
+  }
+});
     
     const toggleFeedSelection = (feedId, isEditing = false) => {
       const targetArray = isEditing ? editingCategoryFeeds : selectedFeedsForNew;

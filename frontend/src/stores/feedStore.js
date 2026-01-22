@@ -342,41 +342,34 @@ export const useFeedsStore = defineStore('feeds', () => {
     return availableFeeds.value.filter(f => f.isCustom);
   });
 
-  const saveToLocalStorage = () => {
-    try {
-      const dataToSave = {
-        categories: categories.value,
-        selectedCategoryId: selectedCategoryId.value,
-        customFeeds: availableFeeds.value.filter(f => f.isCustom),
-        savedAt: new Date().toISOString(),
-        version: '1.0'
-      };
-      localStorage.setItem('newsComboFeeds', JSON.stringify(dataToSave));
-    } catch (e) {
-      console.error('Greška pri spremanju postavki:', e);
-    }
-  };
+// uklonjen localStorage support
+const saveToLocalStorage = () => {
+  try {
+    const dataToSave = {
+      selectedCategoryId: selectedCategoryId.value,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('newsComboSelectedCategory', JSON.stringify(dataToSave));
+  } catch (e) {
+    console.error('Greška pri spremanju odabrane kategorije:', e);
+  }
+};
 
-  const loadFromLocalStorage = () => {
-    try {
-      const saved = localStorage.getItem('newsComboFeeds');
-      if (saved) {
-        const data = JSON.parse(saved);
-        categories.value = data.categories;
-        selectedCategoryId.value = data.selectedCategoryId || 'all';
-        
-        // učitaj custom feedove
-        if (data.customFeeds && Array.isArray(data.customFeeds)) {
-          // ukloni stare custom feedove
-          availableFeeds.value = availableFeeds.value.filter(f => !f.isCustom);
-          // dodaj spremljene custom feedove
-          availableFeeds.value.push(...data.customFeeds);
-        }
+const loadFromLocalStorage = () => {
+  try {
+    const saved = localStorage.getItem('newsComboSelectedCategory');
+    if (saved) {
+      const data = JSON.parse(saved);
+      if (data.selectedCategoryId) {
+        selectedCategoryId.value = data.selectedCategoryId;
       }
-    } catch (e) {
-      console.error('Greška pri učitavanju postavki:', e);
     }
-  };
+  } catch (e) {
+    console.error('Greška pri učitavanju odabrane kategorije:', e);
+  }
+};
+
+  
 
 
   const initializeStore = async () => {

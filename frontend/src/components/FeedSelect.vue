@@ -49,11 +49,13 @@
     }
   };
   
-  onMounted(() => {
-    checkMobile();
-    feedsStore.loadFromLocalStorage();
-    window.addEventListener('resize', checkMobile);
-  });
+  onMounted(async () => {
+  checkMobile();
+  if (feedsStore.categories.length <= 1) {
+    await feedsStore.initializeStore();
+  }
+  window.addEventListener('resize', checkMobile);
+});
   
   onUnmounted(() => {
     window.removeEventListener('resize', checkMobile);
