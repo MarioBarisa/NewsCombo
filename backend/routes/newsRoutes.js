@@ -536,6 +536,53 @@ export default function createNewsRoutes(db) {
     }
   });
 
+
+  //Provjera RSS LINKA -> validacija
+router.get("/rss/validate", async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+    return res.status(400).json({ 
+      valid: false, 
+      message: 'URL nije naveden' 
+    });
+  }
+
+  try {
+    // import rss-parser-a 
+    const Parser = (await import('rss-parser')).default;
+    const parser = new Parser({
+      timeout: 5000, 
+      headers: {
+        'User-Agent': 'NewsCombo RSS Validator/1.0',
+      }
+    });
+
+    const feed = await parser.parseURL(url);
+
+    if (feed && feed.items && feed.items.length > 0) {
+      return res.status(200).json({
+        valid: true,
+        itemCount: feed.items.length,
+        feedTitle: feed.title || 'N/A',
+        message: 'RSS feed je validan'
+      });
+    } else {
+      return res.status(200).json({
+        valid: false,
+        message: 'RSS feed ne sadrži vijesti'
+      });
+    }
+  } catch (error) {
+    console.error('Greška pri validaciji RSS-a:', error.message);
+    return res.status(200).json({
+      valid: false,
+      message: 'Link nije validan RSS feed ili je nedostupan',
+      error: error.message
+    });
+  }
+});
+
   return router;
 }
 
