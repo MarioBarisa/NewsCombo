@@ -58,104 +58,138 @@ const setCachedData = (data) => {
   }
 };
 
-// pomocnici za parsing RSS-a ( xml )
-const takeText = (item, selectors = [], fallback = '') => {
-  for (const selector of selectors) {
-    const value = item.querySelector(selector)?.textContent?.trim();
-    if (value) return value;
-  }
-  return fallback;
-};
+// OPTIMIZIRANE HELPER FUNKCIJE - browser-native
 
-const takeLink = (item) => {
-  const linkText = takeText(item, ['link']);
-  if (linkText) return linkText;
-  const linkEl = item.querySelector('link[href]');
-  return linkEl?.getAttribute('href') || '#';
-};
-
-// ?
 const cleanDescription = (text) => {
-  return (text || '')
+  if (!text) return '';
+  return text
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<\/?.*?>/g, '')
+    .replace(/<\/?[^>]+(>|$)/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .trim()
     .substring(0, 300);
 };
 
-const firstAttr = (el, names = ['url', 'href']) => {
+// bolja ekstrakcija teksta -> jedna funkcija umjesto više istih
+const getText = (element, selectors) => {
+  if (!element) return null;
+  for (const selector of selectors) {
+    const el = element.querySelector(selector);
+    const text = el?.textContent?.trim();
+    if (text) return text;
+  }
+  return null;
+};
+
+// bolja ekstrakcija atributa
+const getAttr = (element, selector, attrs = ['url', 'href']) => {
+  if (!element) return null;
+  const el = selector ? element.querySelector(selector) : element;
   if (!el) return null;
-  for (const name of names) {
-    const val = el.getAttribute(name);
-    if (val) return val;
+  
+  for (const attr of attrs) {
+    const value = el.getAttribute(attr);
+    if (value) return value;
   }
   return null;
 };
 
-const extractThumbnail = (item, rawDescription) => {
-  // prvo se treba pronaci enclosure s image content-type
+const extractThumbnail = (item, rawContent) => {
   const enclosure = item.querySelector('enclosure');
-  const enclosureType = enclosure?.getAttribute('type')?.toLowerCase() || '';
-  const enclosureUrl = firstAttr(enclosure);
-  if (enclosureUrl && (!enclosureType || enclosureType.includes('image'))) {
-    return enclosureUrl;
+  if (enclosure) {
+    const type = enclosure.getAttribute('type')?.toLowerCase() || '';
+    const url = getAttr(enclosure, null);
+    if (url && (!type || type.includes('image'))) {
+      return url;
+    }
   }
 
-  // ostali media tagovi koje neki feedovi koriste
-  const mediaCandidate = item.querySelector(
-    'media\\:content[url], media\\:thumbnail[url], media\\:group media\\:content, content[url], image[url], thumbnail[url]'
-  );
-  const mediaUrl = firstAttr(mediaCandidate);
-  if (mediaUrl) return mediaUrl;
+  // 2. Media namespace tagovi -> porblatika je i dalje pristuna jer se slika vijesti ne učitavaju uvjek??????????
+  const mediaSelectors = [
+    'media\\:content[url]',
+    'media\\:thumbnail[url]', 
+    'media\\:group media\\:content[url]',
+    'content[url]',
+    'image[url]',
+    'thumbnail[url]'
+  ];
+  
+  for (const selector of mediaSelectors) {
+    const url = getAttr(item, selector);
+    if (url) return url;
+  }
 
-  // fallback: prva slika iz HTML opisa > ( da ne bude empty )
-  const imgMatch = rawDescription?.match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (imgMatch && imgMatch[1]) {
-    return imgMatch[1];
+  // 3. Fallback: prva slika iz HTML content-a -> SCUFFED
+  if (rawContent) {
+    const imgMatch = rawContent.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch?.[1]) return imgMatch[1];
   }
 
   return null;
 };
 
-// rss parsing
 const parseRSSFeed = (xmlText, feed) => {
   try {
     const parser = new DOMParser();
     const xml = parser.parseFromString(xmlText, 'text/xml');
     
-    const parseError = xml.querySelector('parsererror');
-    if (parseError) {
-      console.warn(`Parse greška za ${feed.name}`);
+    // check parse greške
+    if (xml.querySelector('parsererror')) {
+      console.warn(`XML parse greška za ${feed.name}`);
       return [];
     }
     
-    let items = Array.from(xml.querySelectorAll('item'));
-    if (items.length === 0) {
-      items = Array.from(xml.querySelectorAll('entry')); // atom format?
-    }
+    // ATOM ili RSS??
+    const isAtom = xml.querySelector('feed') !== null;
+    const itemSelector = isAtom ? 'entry' : 'item';
+    const items = xml.querySelectorAll(itemSelector);
     
-    return items.slice(0, 10).map(item => {
-      const title = takeText(item, ['title'], 'Bez naslova');
-      const link = takeLink(item);
-      const pubDate = takeText(item, ['pubDate', 'updated', 'published'], new Date().toISOString());
-      const rawDescription = takeText(item, ['description', 'summary', 'content'], '');
-      const thumbnail = extractThumbnail(item, rawDescription);
-      const description = cleanDescription(rawDescription);
-      const guid = takeText(item, ['guid'], '') || link || `${feed.name}-${Date.now()}-${Math.random()}`;
+    if (items.length === 0) {
+      console.warn(`Nema items za ${feed.name}`);
+      return [];
+    }
+
+    // map bolji od set ( prije bio set )
+    const titleSelectors = ['title'];
+    const linkSelectors = isAtom ? ['link[href]', 'link'] : ['link'];
+    const dateSelectors = isAtom ? ['updated', 'published'] : ['pubDate', 'dc\\:date'];
+    const contentSelectors = isAtom 
+      ? ['content', 'summary'] 
+      : ['content\\:encoded', 'description', 'summary'];
+    const guidSelectors = ['guid', 'id'];
+
+    return Array.from(items).slice(0, 10).map(item => {
+      const title = getText(item, titleSelectors) || 'Bez naslova';
+      
+      // link extract ( posebno za Atom )
+      let link = getText(item, linkSelectors);
+      if (!link && isAtom) {
+        link = getAttr(item, 'link', ['href']) || getAttr(item, 'link[rel="alternate"]', ['href']);
+      }
+      link = link || '#';
+      
+      const pubDate = getText(item, dateSelectors) || new Date().toISOString();
+      const rawContent = getText(item, contentSelectors) || '';
+      const guid = getText(item, guidSelectors) || link || `${feed.name}-${Date.now()}-${Math.random()}`;
+      
+      const thumbnail = extractThumbnail(item, rawContent);
+      const description = cleanDescription(rawContent);
 
       return {
         title,
         description,
         link,
-        pubDate: pubDate || new Date().toISOString(),
+        pubDate,
         source: feed.name,
         domain: feed.domain || 'unknown',
         category: feed.category || 'general',
-        feedId: feed.id, // Dodan feedId
+        feedId: feed.id,
         thumbnail,
         guid
       };
@@ -191,19 +225,21 @@ const fetchRSSFeed = async (feedUrl, feedName, retries = 3) => {
       
       const text = await response.text();
       
-      // dobar xml?
-      if (text.includes('<?xml') || text.includes('<rss') || text.includes('<feed')) {
-        return text;
-      } else {
-        throw new Error('Invalid XML response');
+      if (!text || text.length < 50) {
+        throw new Error('Invalid response length');
       }
+      
+      if (!text.includes('<?xml') && !text.includes('<rss') && !text.includes('<feed')) {
+        throw new Error('Invalid XML format');
+      }
+      
+      return text;
       
     } catch (err) {
       clearTimeout(timeoutId);
       
       console.warn(`⚠️ ${feedName} pokušaj ${attempt + 1}/${retries}: ${err.message}`);
       
-      // drugi proxy
       if (attempt < retries - 1) {
         rotateProxy();
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -213,39 +249,33 @@ const fetchRSSFeed = async (feedUrl, feedName, retries = 3) => {
   
   throw new Error(`Failed after ${retries} attempts`);
 };
-
-// sortiraj i update
-const sortAndUpdateNews = () => {
+  const sortAndUpdateNews = () => {
   const allItems = Object.values(newsBySource.value).flat();
   
-  // ukloni duplikate
-  const seen = new Set();
-  const unique = [];
+  if (allItems.length === 0) return;
+  
+  const uniqueMap = new Map();
   allItems.forEach(item => {
     const key = item.guid || item.link;
-    if (key && !seen.has(key)) {
-      seen.add(key);
-      unique.push(item);
+    if (key && !uniqueMap.has(key)) {
+      uniqueMap.set(key, item);
     }
   });
   
-  // kronologija
+  const unique = Array.from(uniqueMap.values());
   unique.sort((a, b) => {
-    const dateA = new Date(a.pubDate || 0);
-    const dateB = new Date(b.pubDate || 0);
-    return dateB - dateA; // Descending (najnovije prvo)
+    return new Date(b.pubDate || 0) - new Date(a.pubDate || 0);
   });
   
   cachedNews.value = unique.slice(0, 150);
 };
 
-// main fn
 const fetchNews = async (categoryId = null) => {
   const cached = getCachedData();
   if (cached && cached.length > 0) {
     cachedNews.value = cached;
     
-    // pozainski refrash
+    //pozadniski refresh
     setTimeout(() => {
       if (!isLoading.value) {
         console.log('NEWS REFRESH');
@@ -259,7 +289,7 @@ const fetchNews = async (categoryId = null) => {
   return await fetchNewsFresh(categoryId);
 };
 
-// novo učitavanje -> sve paralenllo
+// paralelno učitavanje
 const fetchNewsFresh = async (categoryId = null) => {
   if (isLoading.value) {
     return cachedNews.value;
@@ -271,11 +301,9 @@ const fetchNewsFresh = async (categoryId = null) => {
   loadingProgress.value = 0;
 
   try {
-    // dohvati feedove iz store-a ( promjena na mongo kasnije )
     const feedsStore = useFeedsStore();
     feedsStore.loadFromLocalStorage();
     
-    // odaberi feedove ovisno o kategoriji
     let feedsToFetch;
     if (categoryId === 'all' || !categoryId) {
       feedsToFetch = feedsStore.availableFeeds;
@@ -309,26 +337,25 @@ const fetchNewsFresh = async (categoryId = null) => {
           successCount++;
           sortAndUpdateNews();
         } else {
-          console.warn(` ${feed.name}: 0 news -> makni iz RSS array jer ne radi`);
+          console.warn(`${feed.name}: 0 news`);
         }
       } catch (err) {
-        console.warn(`ERROR! :-> ${feed.name}: ${err.message}`);
+        console.warn(`ERROR! ${feed.name}: ${err.message}`);
       } finally {
         completedCount++;
         loadingProgress.value = Math.round((completedCount / totalFeeds) * 100);
       }
     };
 
-    console.log(`Load ->>> ${totalFeeds} izvora paralelno...`);
+    console.log(`Load ${totalFeeds} izvora paralelno...`);
     await Promise.allSettled(feedsToFetch.map(fetchSingleFeed));
 
-    // Finalno sortiranje
     sortAndUpdateNews();
 
     if (cachedNews.value.length > 0) {
       setCachedData(cachedNews.value);
       error.value = null;
-      console.log(`Ukupno: ${cachedNews.value.length} vijesti iz ${successCount}/${totalFeeds} izvora`);
+      console.log(`UKUPNO: ${cachedNews.value.length} vijesti iz ${successCount}/${totalFeeds} izvora`);
     } else {
       error.value = `Nije moguće učitati vijesti (0/${totalFeeds} izvora)`;
       cachedNews.value = getMockNews();
@@ -337,7 +364,7 @@ const fetchNewsFresh = async (categoryId = null) => {
     return cachedNews.value;
 
   } catch (err) {
-    console.error('ERROR! :-> ', err);
+    console.error('Error:', err);
     error.value = 'Greška pri dohvaćanju vijesti';
     cachedNews.value = getMockNews();
     return cachedNews.value;
@@ -347,7 +374,6 @@ const fetchNewsFresh = async (categoryId = null) => {
   }
 };
 
-// filtriraj -> nije implementirano
 const getNewsByCategory = (category) => {
   if (!category || category === 'all') {
     return cachedNews.value;
@@ -355,7 +381,6 @@ const getNewsByCategory = (category) => {
   return cachedNews.value.filter(news => news.category === category);
 };
 
-// korisnik force refresh
 const refreshNews = async (categoryId = null) => {
   localStorage.removeItem(CACHE_KEY);
   return await fetchNewsFresh(categoryId);

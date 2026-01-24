@@ -298,8 +298,6 @@ export const useFeedsStore = defineStore('feeds', () => {
     } catch (error) {
       console.error("Greška pri brisanju kategorije:", error);
       console.error("Error details:", error.response?.data || error.message);
-      
-      // ako nije obrisano sa mongo, ne briši sa lokale
       throw error;
       
     } finally {
@@ -312,7 +310,6 @@ export const useFeedsStore = defineStore('feeds', () => {
   const selectCategory = (categoryId) => {
     if (categories.value.some(c => c.id === categoryId)) {
       selectedCategoryId.value = categoryId;
-      // Spremi samo odabranu kategoriju u localStorage
       localStorage.setItem('selectedCategoryId', categoryId);
       return true;
     }
