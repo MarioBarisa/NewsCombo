@@ -204,6 +204,16 @@
       await refreshNews()
     }
   )
+
+  const setSortNewest = async () => {
+    sortOrder.value = 'desc';
+    await refreshNews();
+  };
+
+  const setSortOldest = async () => {
+    sortOrder.value = 'asc';
+    await refreshNews();
+  };
   
   onMounted(async () => {
     loadPreferences()
@@ -242,21 +252,23 @@
         <h2 class="text-3xl font-bold">Najnovije vijesti</h2>
         <div class="flex gap-2">
           <button 
-            @click="sortOrder = 'desc'" 
+            @click="setSortNewest"
             :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'"
             class="btn btn-sm"
+            :disabled="loading"
           >
             Najnovije
           </button>
           <button 
-            @click="sortOrder = 'asc'" 
+            @click="setSortOldest"
             :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'"
             class="btn btn-sm"
+            :disabled="loading"
           >
             Najstarije
-          </button>
+            </button>
           <button 
-            @click="refreshNews" 
+            @click="setSortOldest" 
             class="btn btn-sm btn-outline"
             :class="{ 'loading': loading }"
             :disabled="loading"
