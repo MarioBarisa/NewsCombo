@@ -8,6 +8,7 @@ app.use(cors());
 const PORT = 3005;
 import { connectToDatabase } from './mongo.js';
 import createNewsRoutes from "./routes/newsRoutes.js";
+import createBookmarkRoutes from "./routes/bookMarkRoutes.js";
 
 const logger = (req, res, next) => {
     const timeStamp = new Date().toISOString();
@@ -26,6 +27,7 @@ async function startNC() {
     try {
         const db = await connectToDatabase();
         app.use(createNewsRoutes(db));
+        app.use(createBookmarkRoutes(db));
         
         app.listen(PORT, () => {
             console.log(`Server je pokrenut na: ${PORT}`);

@@ -54,7 +54,7 @@ onMounted(() => {
         :class="activeFeedId === null ? 'btn-primary' : 'btn-ghost'"
         class="btn btn-xs"
         title="Prikaži sve feedove iz kategorije"
-      >
+      > 
         <span class="text-xs">📰 Svi ({{ categoryFeeds.length }})</span>
       </button>
 
