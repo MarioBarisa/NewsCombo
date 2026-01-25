@@ -64,7 +64,7 @@ export default {
         return apiClient.delete(`/grupe/${id}`);
     },
 
-    //ČLANCI
+    //ČLANCI -> ne korsiti se trenutno!!!!
 
     getAllArticles() {
         return apiClient.get("/clanci");

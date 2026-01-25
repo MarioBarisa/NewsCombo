@@ -372,7 +372,7 @@ export default function createNewsRoutes(db) {
     }
   });
 
-  // ČLANCI - CRUD operacije
+  // ČLANCI - CRUD operacije - TRENUTNO SE NE KORISTI!!!!!!
 
   // GET /clanci - svi članci
   router.get("/clanci", async (req, res) => {
