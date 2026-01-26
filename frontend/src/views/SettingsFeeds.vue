@@ -54,11 +54,12 @@ const cancelAddingCategory = () => {
 };
 
 const confirmAddCategory = () => {
-  if (newCategoryName.value.trim() && selectedFeedsForNew.value.length > 0) {
-    feedsStore.addCategory(newCategoryName.value, selectedFeedsForNew.value);
+  if (newCategoryName.value.trim()) {
+    feedsStore.addCategory(newCategoryName.value, selectedFeedsForNew.value); // može biti []
     cancelAddingCategory();
   }
 };
+
 
 const startEditingCategory = (category) => {
   if (category.isDefault) return;
@@ -205,8 +206,8 @@ const confirmDeleteCustomFeed = (feedId) => {
             <div class="join w-full">
               <input v-model="customFeedUrl" @input="onUrlChange" type="url" placeholder="https://example.com/feed"
                 class="input input-bordered join-item flex-1" />
-              <button @click="checkRssValidity" :disabled="!customFeedUrl.trim() || isCheckingRss" class=" ml-2 btn join-item"
-                :class="{
+              <button @click="checkRssValidity" :disabled="!customFeedUrl.trim() || isCheckingRss"
+                class=" ml-2 btn join-item" :class="{
                   'btn-success': rssCheckStatus === 'valid',
                   'btn-error': rssCheckStatus === 'invalid',
                   'btn-neutral': !rssCheckStatus
@@ -347,22 +348,16 @@ const confirmDeleteCustomFeed = (feedId) => {
                 </div>
               </div>
             </div>
-            <p v-if="selectedFeedsForNew.length === 0" class="text-sm opacity-60 mt-3">
-              ⚠️ Odaberite barem jedan feed
-            </p>
-            <p v-else class="text-sm opacity-75 mt-3">
-              ✓ Odabrano {{ selectedFeedsForNew.length }} feedova
-            </p>
           </div>
 
           <div class="card-actions justify-end gap-2">
             <button @click="cancelAddingCategory" class="btn btn-ghost">
               Otkaži
             </button>
-            <button @click="confirmAddCategory" :disabled="!newCategoryName.trim() || selectedFeedsForNew.length === 0"
-              class="btn btn-primary">
+            <button @click="confirmAddCategory" :disabled="!newCategoryName.trim()" class="btn btn-primary">
               Kreiraj
             </button>
+
           </div>
         </div>
       </div>
