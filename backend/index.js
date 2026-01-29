@@ -9,6 +9,7 @@ const PORT = 3005;
 import { connectToDatabase } from './mongo.js';
 import createNewsRoutes from "./routes/newsRoutes.js";
 import createBookmarkRoutes from "./routes/bookMarkRoutes.js";
+import createAIRoutes from "./routes/aiRoutes.js";
 
 const logger = (req, res, next) => {
     const timeStamp = new Date().toISOString();
@@ -28,6 +29,7 @@ async function startNC() {
         const db = await connectToDatabase();
         app.use(createNewsRoutes(db));
         app.use(createBookmarkRoutes(db));
+        app.use('/api', createAIRoutes(db)); 
         
         app.listen(PORT, () => {
             console.log(`Server je pokrenut na: ${PORT}`);

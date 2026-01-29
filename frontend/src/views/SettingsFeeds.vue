@@ -164,6 +164,12 @@ const confirmDeleteCustomFeed = (feedId) => {
     feedsStore.removeCustomFeed(feedId);
   }
 };
+
+
+
+import AISpotlightSettings from '../components/AISpotlightSettings.vue';
+
+
 </script>
 
 <template>
@@ -198,7 +204,7 @@ const confirmDeleteCustomFeed = (feedId) => {
             </label>
           </div>
 
-          <!-- RSS URL input sa gumbom za provjeru (već imaš) -->
+          <!-- RSS URL input sa gumbom za provjeru -->
           <div class="form-control mb-4">
             <label class="label">
               <span class="label-text">RSS URL</span>
@@ -431,6 +437,8 @@ const confirmDeleteCustomFeed = (feedId) => {
         </div>
       </div>
 
+
+
       <div v-else-if="!showAddForm" class="alert">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -438,8 +446,9 @@ const confirmDeleteCustomFeed = (feedId) => {
         </svg>
         <span>Trebate nekoliko sekundi da kreirate prvu kategoriju!</span>
       </div>
-    </div>
 
+      <AISpotlightSettings></AISpotlightSettings>
+    </div>
     <div class="alert alert-info">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
