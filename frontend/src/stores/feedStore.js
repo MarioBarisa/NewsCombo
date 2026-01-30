@@ -308,11 +308,22 @@ export const useFeedsStore = defineStore('feeds', () => {
   
 
   const selectCategory = (categoryId) => {
+    console.log('🔍 Selecting category:', categoryId);
+    
+    //  case za AI sažetak
+    if (categoryId === 'ai-summary') {
+      selectedCategoryId.value = 'ai-summary';
+      localStorage.setItem('selectedCategoryId', 'ai-summary');
+      return true;
+    }
+    
     if (categories.value.some(c => c.id === categoryId)) {
       selectedCategoryId.value = categoryId;
       localStorage.setItem('selectedCategoryId', categoryId);
       return true;
     }
+    
+    console.warn(`⚠️ Kategorija ${categoryId} nije pronađena`);
     return false;
   };
   
@@ -324,10 +335,19 @@ export const useFeedsStore = defineStore('feeds', () => {
 
   const selectedFeeds = computed(() => {
     const category = selectedCategory.value;
+    
+    // AI Summary nema feedove (koristi posebnu AI grupu)
+    if (category.id === 'ai-summary') {
+      return [];
+    }
+    
+    // Svi feedovi
     if (category.id === 'all') {
       return availableFeeds.value;
     }
-    return category.feeds;
+    
+    // Feedovi iz odabrane kategorije
+    return category.feeds || [];
   });
 
   const feedsByCategory = computed(() => {

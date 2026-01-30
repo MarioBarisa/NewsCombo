@@ -1,35 +1,31 @@
 import express from "express";
 import cron from 'node-cron';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export default function createAIRoutes(db) {
   const router = express.Router();
   
-  // counter koliko je puta danas dobiven summary
   let dailySummaryCount = 0;
   let lastResetDate = new Date().toDateString();
   
-  // reset svaki dan u 00:00
   cron.schedule('0 0 * * *', () => {
     dailySummaryCount = 0;
     lastResetDate = new Date().toDateString();
-    console.log('🔄 AI summary brojač resetiran');
   });
 
-  // GET /ai-grupa - dohvati AI grupu s feedovima
   router.get("/ai-grupa", async (req, res) => {
     try {
       const collection = db.collection("ai_grupa");
       let aiGrupa = await collection.findOne({ type: "ai_spotlight" });
       
-      // ne postoji -> kreiraj novu
       if (!aiGrupa) {
         aiGrupa = {
           type: "ai_spotlight",
-          naziv: "AI Spotlight 💡",
-          opis: "Personalizirani AI sažetak do 3x dnevno",
           feedIds: [],
-          maxFeeds: 5,
-          dailyLimit: 3,
+          generatedToday: 0,
+          lastResetDate: new Date().toDateString(),
           createdAt: new Date()
         };
         await collection.insertOne(aiGrupa);
@@ -37,14 +33,11 @@ export default function createAIRoutes(db) {
       
       res.status(200).json(aiGrupa);
     } catch (error) {
-      res.status(500).json({ 
-        error: "Greška pri dohvatu AI grupe", 
-        details: error.message 
-      });
+      res.status(500).json({ error: "Greška", details: error.message });
     }
   });
+  
 
-  // POST /ai-grupa/feed - add feed u AI grupu (max 5)
   router.post("/ai-grupa/feed", async (req, res) => {
     const { feedId } = req.body;
     
@@ -56,307 +49,328 @@ export default function createAIRoutes(db) {
       const collection = db.collection("ai_grupa");
       const feedCollection = db.collection("rss_feedovi");
       
-      // feed postoji?
-      const feed = await feedCollection.findOne({ id: parseInt(feedId) });
+      let feed = await feedCollection.findOne({ id: parseInt(feedId) });
+      if (!feed) feed = await feedCollection.findOne({ id: feedId.toString() });
+      
       if (!feed) {
         return res.status(404).json({ error: "Feed ne postoji" });
       }
 
       const aiGrupa = await collection.findOne({ type: "ai_spotlight" });
-      
       if (!aiGrupa) {
         return res.status(404).json({ error: "AI grupa ne postoji" });
       }
 
-      // limit 5 feedova ( rss linkova )
       if (aiGrupa.feedIds.length >= 5) {
-        return res.status(400).json({ 
-          error: "Dosegnut maksimalni broj feedova (5)" 
-        });
+        return res.status(400).json({ error: "Maksimum 5 feedova" });
       }
 
-      // provjera da se ne doda dva ista feeda
-      if (aiGrupa.feedIds.includes(parseInt(feedId))) {
-        return res.status(400).json({ 
-          error: "Feed je već u AI grupi" 
-        });
+      const feedIdValue = feed.id;
+      const isDuplicate = aiGrupa.feedIds.some(id => 
+        id == feedIdValue || id.toString() === feedIdValue.toString()
+      );
+      
+      if (isDuplicate) {
+        return res.status(400).json({ error: "Feed već postoji" });
       }
 
-      // add feed
       await collection.updateOne(
         { type: "ai_spotlight" },
-        { 
-          $push: { feedIds: parseInt(feedId) },
-          $set: { updatedAt: new Date() }
-        }
+        { $push: { feedIds: feedIdValue }, $set: { updatedAt: new Date() } }
       );
 
       res.status(200).json({ 
-        poruka: "Feed uspješno dodan u AI grupu",
-        feedId: feedId,
-        totalFeeds: aiGrupa.feedIds.length + 1
+        poruka: "Feed dodan", 
+        feedId: feedIdValue, 
+        totalFeeds: aiGrupa.feedIds.length + 1 
       });
     } catch (error) {
-      res.status(500).json({ 
-        error: "Greška pri dodavanju feeda", 
-        details: error.message 
-      });
+      res.status(500).json({ error: "Greška", details: error.message });
     }
   });
 
-  // DELETE /ai-grupa/feed/:feedId - ukloni feed iz AI grupe
   router.delete("/ai-grupa/feed/:feedId", async (req, res) => {
-    const feedId = parseInt(req.params.feedId);
+    const feedId = req.params.feedId;
 
     try {
       const collection = db.collection("ai_grupa");
-      
       const result = await collection.updateOne(
         { type: "ai_spotlight" },
         { 
-          $pull: { feedIds: feedId },
+          $pull: { feedIds: { $in: [feedId, feedId.toString(), parseInt(feedId) || feedId] } },
           $set: { updatedAt: new Date() }
         }
       );
 
       if (result.modifiedCount === 0) {
-        return res.status(404).json({ error: "Feed nije pronađen u AI grupi" });
+        return res.status(404).json({ error: "Feed nije pronađen" });
       }
 
-      res.status(200).json({ 
-        poruka: `Feed ${feedId} uklonjen iz AI grupe` 
-      });
+      res.status(200).json({ poruka: `Feed ${feedId} uklonjen` });
     } catch (error) {
-      res.status(500).json({ 
-        error: "Greška pri uklanjanju feeda", 
-        details: error.message 
-      });
+      res.status(500).json({ error: "Greška", details: error.message });
     }
   });
 
-  // GET /ai-grupa/summary/status - provjeri status sažetka
   router.get("/ai-grupa/summary/status", async (req, res) => {
     try {
+      const collection = db.collection("ai_grupa");
       const currentDate = new Date().toDateString();
       
-      // reset novi dan
-      if (lastResetDate !== currentDate) {
-        dailySummaryCount = 0;
-        lastResetDate = currentDate;
+      let aiGrupa = await collection.findOne({ type: "ai_spotlight" });
+      
+      if (!aiGrupa) {
+        return res.status(404).json({ error: "AI grupa ne postoji" });
       }
 
-      const canGenerate = dailySummaryCount < 3;
-      const remainingGenerations = 3 - dailySummaryCount;
+      if (aiGrupa.lastResetDate !== currentDate) {
+        await collection.updateOne(
+          { type: "ai_spotlight" },
+          { 
+            $set: { 
+              generatedToday: 0,
+              lastResetDate: currentDate
+            }
+          }
+        );
+        aiGrupa.generatedToday = 0;
+        aiGrupa.lastResetDate = currentDate;
+        dailySummaryCount = 0;
+        lastResetDate = currentDate;
+      } else {
+        dailySummaryCount = aiGrupa.generatedToday || 0;
+      }
 
       res.status(200).json({
-        canGenerate,
+        canGenerate: aiGrupa.generatedToday < 3,
         dailyLimit: 3,
-        generatedToday: dailySummaryCount,
-        remainingGenerations,
-        lastResetDate
+        generatedToday: aiGrupa.generatedToday || 0,
+        remainingGenerations: 3 - (aiGrupa.generatedToday || 0),
+        lastResetDate: aiGrupa.lastResetDate
       });
     } catch (error) {
-      res.status(500).json({ 
-        error: "Greška pri provjeri statusa", 
-        details: error.message 
-      });
+      res.status(500).json({ error: "Greška", details: error.message });
     }
   });
 
-  // POST /ai-grupa/summary/generate - generiraj AI sažetak
   router.post("/ai-grupa/summary/generate", async (req, res) => {
     try {
-      const currentDate = new Date().toDateString();
-      
-      // reset novi dan
-      if (lastResetDate !== currentDate) {
-        dailySummaryCount = 0;
-        lastResetDate = currentDate;
-      }
-
-      // provjera daily limita
-      if (dailySummaryCount >= 3) {
-        return res.status(429).json({ 
-          error: "Dosegnut dnevni limit AI sažetaka (3/3)",
-          nextAvailableAt: "00:00 sljedećeg dana"
-        });
-      }
-
       const aiGrupaCollection = db.collection("ai_grupa");
       const feedCollection = db.collection("rss_feedovi");
       const summaryCollection = db.collection("ai_summaries");
-
-      // get ai grupa
-      const aiGrupa = await aiGrupaCollection.findOne({ type: "ai_spotlight" });
+      const currentDate = new Date().toDateString();
+  
+      let aiGrupa = await aiGrupaCollection.findOne({ type: "ai_spotlight" });
       
-      if (!aiGrupa || aiGrupa.feedIds.length === 0) {
-        return res.status(400).json({ 
-          error: "Dodaj barem jedan RSS feed u AI grupu" 
-        });
+      if (!aiGrupa) {
+        return res.status(404).json({ error: "AI grupa ne postoji" });
       }
-
-      //get feedove iz ai grupe
-      const feeds = await feedCollection
-        .find({ id: { $in: aiGrupa.feedIds } })
-        .toArray();
-
-      // fetch i parse rss-a
+  
+      if (aiGrupa.lastResetDate !== currentDate) {
+        await aiGrupaCollection.updateOne(
+          { type: "ai_spotlight" },
+          { 
+            $set: { 
+              generatedToday: 0,
+              lastResetDate: currentDate
+            }
+          }
+        );
+        aiGrupa.generatedToday = 0;
+        dailySummaryCount = 0;
+        lastResetDate = currentDate;
+      } else {
+        dailySummaryCount = aiGrupa.generatedToday || 0;
+      }
+  
+      if ((aiGrupa.generatedToday || 0) >= 3) {
+        return res.status(429).json({ error: "Dosegnut dnevni limit (3/3)" });
+      }
+  
+      if (!aiGrupa.feedIds || aiGrupa.feedIds.length === 0) {
+        return res.status(400).json({ error: "Dodaj barem jedan RSS feed" });
+      }
+  
+      const feeds = [];
+      for (const feedId of aiGrupa.feedIds) {
+        let feed = await feedCollection.findOne({ id: feedId });
+        if (!feed) feed = await feedCollection.findOne({ id: feedId.toString() });
+        if (!feed && !isNaN(feedId)) feed = await feedCollection.findOne({ id: parseInt(feedId) });
+        if (feed) feeds.push(feed);
+      }
+  
+      if (feeds.length === 0) {
+        return res.status(400).json({ error: "Feedovi nisu pronađeni" });
+      }
+  
       const Parser = (await import('rss-parser')).default;
       const parser = new Parser();
-      
       let allArticles = [];
       
       for (const feed of feeds) {
         try {
           const rssFeed = await parser.parseURL(feed.url);
           const articles = rssFeed.items.slice(0, 5).map(item => ({
-            title: item.title,
-            description: item.contentSnippet || item.description,
+            title: item.title || "Bez naslova",
+            description: (item.contentSnippet || item.description || "").substring(0, 300),
             link: item.link,
             pubDate: item.pubDate,
             source: feed.naziv
           }));
           allArticles = allArticles.concat(articles);
         } catch (error) {
-          console.error(`Greška pri parsiranju ${feed.naziv}:`, error.message);
+          continue;
         }
       }
-
+  
       if (allArticles.length === 0) {
-        return res.status(400).json({ 
-          error: "Nema dostupnih članaka za sažetak" 
-        });
+        return res.status(400).json({ error: "Nema dostupnih članaka" });
       }
-
-      // generacija ai summary-a ( treba implementirati sa gpt )
+  
       const aiSummary = await generateAISummary(allArticles);
-
-      // spremi sažetak
+  
       const summaryDoc = {
+        _id: new Date().getTime().toString(),
         type: "daily_spotlight",
         summary: aiSummary,
         articlesCount: allArticles.length,
         feedsSources: feeds.map(f => f.naziv),
         generatedAt: new Date(),
-        generationNumber: dailySummaryCount + 1
+        generationNumber: (aiGrupa.generatedToday || 0) + 1
       };
-
+  
       await summaryCollection.insertOne(summaryDoc);
-      
-      // inc counter
+  
+      await aiGrupaCollection.updateOne(
+        { type: "ai_spotlight" },
+        { 
+          $inc: { generatedToday: 1 },
+          $set: { updatedAt: new Date() }
+        }
+      );
+  
       dailySummaryCount++;
-
+  
       res.status(200).json({
-        poruka: "AI sažetak uspješno generiran",
+        poruka: "AI sažetak generiran",
         summary: aiSummary,
         articlesProcessed: allArticles.length,
         generatedAt: summaryDoc.generatedAt,
         remainingGenerations: 3 - dailySummaryCount
       });
-
+  
     } catch (error) {
       res.status(500).json({ 
-        error: "Greška pri generiranju AI sažetka", 
-        details: error.message 
+        error: "Greška pri generiranju", 
+        details: error.message
       });
     }
   });
+  
 
-  // GET /ai-grupa/summaries - get sve ai sažetak
   router.get("/ai-grupa/summaries", async (req, res) => {
     try {
       const collection = db.collection("ai_summaries");
-      
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const summaries = await collection
-        .find({ 
-          generatedAt: { $gte: sevenDaysAgo }
-        })
+        .find({ generatedAt: { $gte: sevenDaysAgo } })
         .sort({ generatedAt: -1 })
         .toArray();
 
       res.status(200).json(summaries);
     } catch (error) {
-      res.status(500).json({ 
-        error: "Greška pri dohvatu sažetaka", 
-        details: error.message 
-      });
+      res.status(500).json({ error: "Greška", details: error.message });
     }
   });
 
-  // DELETE /ai-grupa/summaries/:id -delete sažetak
   router.delete("/ai-grupa/summaries/:id", async (req, res) => {
     try {
-      const collection = db.collection("ai_summaries");
-      const ObjectId = (await import('mongodb')).ObjectId;
+      const summaryCollection = db.collection("ai_summaries");
       
-      const result = await collection.deleteOne({ 
-        _id: new ObjectId(req.params.id) 
+      const result = await summaryCollection.deleteOne({ 
+        _id: req.params.id
       });
-
+  
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: "Sažetak nije pronađen" });
       }
-
+  
       res.status(200).json({ poruka: "Sažetak obrisan" });
     } catch (error) {
-      res.status(500).json({ 
-        error: "Greška pri brisanju sažetka", 
-        details: error.message 
-      });
+      res.status(500).json({ error: "Greška", details: error.message });
     }
   });
+  
+  
 
-  return router;
+  async function generateAISummary(articles) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY nije postavljen");
+    }
+
+    const articlesText = articles.map((a, i) => 
+      `[${i + 1}] ${a.title} (${a.source})\n${a.description}\nLink: ${a.link}\n`
+    ).join('\n');
+
+    const prompt = `Analiziraj sljedeće vijesti i kreiraj strukturirani sažetak na hrvatskom jeziku. Neka budu zanimljive i interesantne teme ali isto uključi najbitnije informacije.
+
+VIJESTI:
+${articlesText}
+
+Napravi JSON odgovor s ovakvom strukturom:
+{
+  "headline": "Glavni naslov za danas (max 8 riječi)",
+  "sections": [
+    {
+      "category": "Naziv kategorije",
+      "summary": "5-10 rečenica sažetka",
+      "topArticles": [
+        {"title": "Naslov članka", "source": "Izvor", "link": "link"}
+      ]
+    }
+  ],
+  "insights": ["Ključni insight 1", "Ključni insight 2"]
 }
 
-// Funkcija za generiranje AI sažetka
-async function generateAISummary(articles) {
-  // OVDJE IDE INTEGRACIJA S OpenAI/Anthropic API
-  
-  // temp mock implementacija
-  const articlesText = articles.map((a, i) => 
-    `${i + 1}. ${a.title} (${a.source})\n${a.description}`
-  ).join('\n\n');
+Grupiraj vijesti po kategorijama (max 3). Budi koncizan. Odgovori SAMO JSON-om, bez dodatnog teksta.`;
 
-  // MOCK verzija 
-  const mockSummary = {
-    headline: "🔥 Najvažnije vijesti danas",
-    sections: [
-      {
-        category: "Tech & Inovacije",
-        summary: "Najnoviji razvoji u tehnologiji uključuju...",
-        topArticles: articles.slice(0, 3).map(a => ({
-          title: a.title,
-          source: a.source,
-          link: a.link
-        }))
+    try {
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash"
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("Gemini nije vratio valjan JSON");
       }
-    ],
-    insights: [
-      "Trend rasta AI tehnologija nastavlja se",
-      "Povećan fokus na cyber sigurnost"
-    ],
-    generated: new Date().toISOString()
-  };
 
-    // za napraviti: implementacija pravog API poziv
-    //generic chatGPT ai ;;;;;;
-  // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  // const response = await openai.chat.completions.create({
-  //   model: "gpt-4",
-  //   messages: [{
-  //     role: "system",
-  //     content: "Ti si novinski analitičar koji kreira koncizne sažetke vijesti..."
-  //   }, {
-  //     role: "user",
-  //     content: `Kreiraj detaljan sažetak sljedećih vijesti:\n\n${articlesText}`
-  //   }],
-  //   temperature: 0.7,
-  //   max_tokens: 1000
-  // });
+      const summary = JSON.parse(jsonMatch[0]);
+      
+      summary.sections = summary.sections.map(section => ({
+        ...section,
+        topArticles: section.topArticles.slice(0, 3).map(article => {
+          const original = articles.find(a => 
+            a.title.toLowerCase().includes(article.title.toLowerCase().substring(0, 15))
+          );
+          return {
+            title: article.title,
+            source: article.source,
+            link: original?.link || article.link || "#"
+          };
+        })
+      }));
 
-  return mockSummary;
+      return summary;
+    } catch (error) {
+      throw new Error(`Gemini API greška: ${error.message}`);
+    }
+  }
+
+  return router;
 }

@@ -1,134 +1,233 @@
 <template>
-    <div class="ai-spotlight-settings">
-      <div class="header">
-        <h2>AI Spotlight</h2>
-        <p class="subtitle">Personalizirani sažetak vijesti - do 3x dnevno</p>
+    <div class="container ml-1 px-4 py-8 max-w-6xl">
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-semibold">
+          AI Spotlight
+        </h1>
+        <p class="text-lg opacity-70">
+          Personalizirani AI sažetak vijesti - do 3x dnevno
+        </p>
       </div>
-  
-      <!-- trenutni status generiranja -->
-      <div class="generation-status" :class="statusClass">
-        <div class="status-info">
-          <span class="icon">{{ statusIcon }}</span>
-          <div>
-            <p class="status-text">{{ statusText }}</p>
-            <p class="status-detail">{{ statusDetail }}</p>
-          </div>
-        </div>
-        <button 
-          @click="generateSummary" 
-          :disabled="!canGenerate || isGenerating"
-          class="btn-generate"
-        >
-          <span v-if="isGenerating">⏳ Generiranje...</span>
-          <span v-else>✨ Generiraj Sažetak</span>
-        </button>
-      </div>
-  
-      <!-- add feed -->
-      <div class="feed-section">
-        <div class="section-header">
-          <h3>RSS Feedovi</h3>
-          <span class="feed-count">{{ aiGroup.feedIds?.length || 0 }} / 5</span>
-        </div>
-  
-        <!-- lista dodanih feedova -->
-        <div v-if="selectedFeeds.length > 0" class="selected-feeds">
-          <div 
-            v-for="feed in selectedFeeds" 
-            :key="feed.id"
-            class="feed-item"
-          >
-            <div class="feed-info">
-              <span class="feed-icon">📰</span>
+      <div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl mb-8">
+        <div class="card-body">
+          <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+              <div class="text-5xl">{{ statusIcon }}</div>
               <div>
-                <p class="feed-name">{{ feed.naziv }}</p>
-                <p class="feed-url">{{ feed.url }}</p>
+                <h2 class="card-title text-xl">{{ statusText }}</h2>
+                <p class="text-sm opacity-90">{{ statusDetail }}</p>
               </div>
             </div>
+  
             <button 
-              @click="removeFeed(feed.id)" 
-              class="btn-remove"
-              title="Ukloni feed"
+              @click="generateSummary" 
+              :disabled="!canGenerate || isGenerating"
+              class="btn btn-lg"
+              :class="canGenerate ? 'btn-neutral' : 'btn-disabled'"
             >
-              ✕
+              <span v-if="isGenerating" class="loading loading-spinner loading-md"></span>
+              <span v-else>
+                 {{ isGenerating ? 'Generiranje...' : 'Generiraj Sažetak' }}
+              </span>
             </button>
           </div>
-        </div>
-  
-        <!-- placeholder ako nema niti jednog feedova -->
-        <div v-else class="empty-state">
-          <p>Još nisi dodao feedove u AI grupu</p>
-          <p class="hint">Dodaj do 5 RSS izvora za personalizirani AI sažetak</p>
-        </div>
-  
-        <!-- add novog feeda -->
-        <div v-if="(aiGroup.feedIds?.length || 0) < 5" class="add-feed-section">
-          <select v-model="selectedFeedId" class="feed-select">
-            <option value="" disabled>Odaberi RSS feed...</option>
-            <option 
-              v-for="feed in availableFeeds" 
-              :key="feed.id"
-              :value="feed.id"
-            >
-              {{ feed.naziv }} - {{ feed.kategorija }}
-            </option>
-          </select>
-          <button 
-            @click="addFeed" 
-            :disabled="!selectedFeedId"
-            class="btn-add"
-          >
-            ➕ Dodaj
-          </button>
-        </div>
-  
-        <div v-else class="max-feeds-notice">
-          ⚠️ Dostignut maksimalni broj feedova (5/5)
         </div>
       </div>
-
-      <div v-if="summaries.length > 0" class="summaries-section">
-        <h3>Nedavni AI Sažeci</h3>
-        <div 
-          v-for="summary in summaries" 
-          :key="summary._id"
-          class="summary-card"
-        >
-          <div class="summary-header">
-            <h4>{{ summary.summary.headline }}</h4>
-            <span class="summary-date">
-              {{ formatDate(summary.generatedAt) }}
-            </span>
+  
+      <!-- RSS Feedovi Section -->
+      <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="card-title text-2xl">
+              RSS Feedovi
+            </h2>
+            <div class="badge badge-lg badge-primary">
+              {{ aiGroup.feedIds?.length || 0 }} / 5
+            </div>
           </div>
-          <div class="summary-content">
+  
+          <!-- Selected Feeds List -->
+          <div v-if="selectedFeeds.length > 0" class="space-y-3 mb-6">
             <div 
-              v-for="(section, idx) in summary.summary.sections" 
-              :key="idx"
-              class="summary-section"
+              v-for="feed in selectedFeeds" 
+              :key="feed.id"
+              class="card bg-base-200 hover:bg-base-300 transition-all"
             >
-              <h5>{{ section.category }}</h5>
-              <p>{{ section.summary }}</p>
-              <div class="top-articles">
-                <a 
-                  v-for="(article, i) in section.topArticles" 
-                  :key="i"
-                  :href="article.link"
-                  target="_blank"
-                  class="article-link"
-                >
-                  {{ article.title }} <span class="source">({{ article.source }})</span>
-                </a>
+              <div class="card-body p-4">
+                <div class="flex justify-between items-center gap-4">
+                  <div class="flex items-center gap-3 flex-1 min-w-0">
+                    <div class="flex-1 min-w-0">
+                      <h3 class="font-semibold text-base truncate">
+                        {{ feed.naziv }}
+                      </h3>
+                      <p class="text-xs opacity-60 truncate">
+                        {{ feed.url }}
+                      </p>
+                      <span class="badge badge-sm badge-outline mt-1">
+                        {{ feed.kategorija }}
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    @click="removeFeed(feed.id)" 
+                    class="btn btn-sm btn-circle btn-error btn-outline"
+                    title="Ukloni feed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-          <div class="summary-footer">
-            <span>📊 {{ summary.articlesCount }} članaka</span>
-            <button 
-              @click="deleteSummary(summary._id)" 
-              class="btn-delete"
-            >
-              🗑️ Obriši
-            </button>
+  
+          <!-- Empty State -->
+          <div v-else class="alert alert-info mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <h3 class="font-bold">Nema dodanih feedova</h3>
+              <div class="text-xs">Dodaj do 5 RSS izvora za personalizirani AI sažetak</div>
+            </div>
+          </div>
+  
+          <div v-if="(aiGroup.feedIds?.length || 0) < 5" class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Dodaj novi feed</span>
+            </label>
+            <div class="join w-full">
+              <select 
+                v-model="selectedFeedId" 
+                class="select select-bordered join-item flex-1"
+              >
+                <option value="" disabled>Odaberi RSS feed...</option>
+                <option 
+                  v-for="feed in availableFeeds" 
+                  :key="feed.id"
+                  :value="feed.id"
+                >
+                  {{ feed.naziv }} - {{ feed.kategorija }}
+                </option>
+              </select>
+              <button 
+                @click="addFeed" 
+                :disabled="!selectedFeedId"
+                class="btn btn-primary join-item"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Dodaj
+              </button>
+            </div>
+          </div>
+  
+          <!-- maksimalni broj feedova notice -->
+          <div v-else class="alert alert-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Dostignut maksimalni broj feedova (5/5)</span>
+          </div>
+        </div>
+      </div>
+  
+      <!-- recent summary section -->
+      <div v-if="summaries.length > 0" class="mb-8">
+        <h2 class="text-2xl font-bold mb-4">Nedavni AI Sažeci</h2>
+        
+        <div class="space-y-4">
+          <div 
+            v-for="summary in summaries" 
+            :key="summary._id"
+            class="card bg-base-100 shadow-xl"
+          >
+            <div class="card-body">
+              <div class="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4">
+                <h3 class="card-title text-xl">
+                  {{ summary.summary.headline }}
+                </h3>
+                <div class="badge badge-ghost badge-lg">
+                  {{ formatDate(summary.generatedAt) }}
+                </div>
+              </div>
+  
+              <div class="space-y-4">
+                <div 
+                  v-for="(section, idx) in summary.summary.sections" 
+                  :key="idx"
+                  class="border-l-4 border-primary pl-4"
+                >
+                  <h4 class="font-bold text-primary mb-2">
+                    {{ section.category }}
+                  </h4>
+                  <p class="text-sm opacity-80 mb-3">
+                    {{ section.summary }}
+                  </p>
+                  
+                  <div class="space-y-2">
+                    <a 
+                      v-for="(article, i) in section.topArticles" 
+                      :key="i"
+                      :href="article.link"
+                      target="_blank"
+                      class="flex items-start gap-2 text-sm link link-hover"
+                    >
+                      <span class="badge badge-sm badge-outline">{{ i + 1 }}</span>
+                      <span class="flex-1">
+                        {{ article.title }}
+                        <span class="opacity-50 text-xs ml-1">({{ article.source }})</span>
+                      </span>
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+  
+              <div class="card-actions justify-between items-center mt-6 pt-4 border-t border-base-300">
+                <div class="flex items-center gap-2">
+                  <div class="badge badge-outline">
+                    {{ summary.articlesCount }} članaka
+                  </div>
+                  <div class="badge badge-outline">
+                    Generiranje #{{ summary.generationNumber }}
+                  </div>
+                </div>
+                <button 
+                  @click="deleteSummary(summary._id)" 
+                  class="btn btn-sm btn-error btn-outline"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Obriši
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <div v-else class="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Još nemaš generiranih AI sažetaka. Dodaj feedove i generiraj prvi sažetak!</span>
+      </div>
+  
+      <div class="alert alert-info mt-8">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>
+          <h3 class="font-bold">Kako radi AI Spotlight?</h3>
+          <div class="text-sm">
+            Dodaj do 5 RSS feedova u grupu. AI će analizirati najnovije članke i generirati personalizirani sažetak. 
+            Možeš generirati do 3 sažetka dnevno. Svaki novi dan se limit resetira u ponoć.
           </div>
         </div>
       </div>
@@ -140,6 +239,7 @@
   import axios from 'axios';
   
   const API_URL = 'http://localhost:3005/api';
+  
 
   const aiGroup = ref({});
   const allFeeds = ref([]);
@@ -147,7 +247,8 @@
   const selectedFeedId = ref('');
   const generationStatus = ref(null);
   const isGenerating = ref(false);
-
+  
+ 
   const selectedFeeds = computed(() => {
     const feedIds = aiGroup.value.feedIds || [];
     return allFeeds.value.filter(f => feedIds.includes(f.id));
@@ -163,32 +264,29 @@
            (aiGroup.value.feedIds?.length || 0) > 0;
   });
   
-  const statusClass = computed(() => {
-    if (!canGenerate.value) return 'status-limited';
-    return 'status-available';
-  });
-  
   const statusIcon = computed(() => {
-    if (!canGenerate.value) return '🚫';
-    return '✅';
+    if (!generationStatus.value) return '⏳';
+    if (generationStatus.value.remainingGenerations === 0) return '';
+    if (generationStatus.value.remainingGenerations === 3) return '';
+    return '';
   });
   
   const statusText = computed(() => {
-    if (!generationStatus.value) return 'Učitavanje...';
+    if (!generationStatus.value) return 'Učitavanje statusa...';
     const remaining = generationStatus.value.remainingGenerations;
     if (remaining === 0) return 'Dnevni limit dostignut';
+    if (remaining === 3) return 'Spremno za generiranje';
     return `Preostalo generiranja danas: ${remaining}/3`;
   });
   
   const statusDetail = computed(() => {
-    if (!generationStatus.value) return '';
+    if (!generationStatus.value) return 'Molimo pričekajte...';
     const generated = generationStatus.value.generatedToday;
-    if (generated === 0) return 'Još nisi generirao sažetak danas';
+    if (generated === 0) return 'Još nisi generirao niti jedan sažetak danas';
     if (generated === 3) return 'Novi sažetak dostupan sutra u 00:00';
-    return `Generirano ${generated}x danas`;
+    return `Već generirano ${generated}x danas`;
   });
   
-  // metode
   async function loadAIGroup() {
     try {
       const response = await axios.get(`${API_URL}/ai-grupa`);
@@ -253,10 +351,19 @@
     
     isGenerating.value = true;
     try {
-      const response = await axios.post(`${API_URL}/ai-grupa/summary/generate`);
-      alert('AI sažetak uspješno generiran!');
+      await axios.post(`${API_URL}/ai-grupa/summary/generate`);
       await loadSummaries();
       await loadGenerationStatus();
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-top toast-center';
+      toast.innerHTML = `
+        <div class="alert alert-success">
+          <span>AI sažetak uspješno generiran!</span>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     } catch (error) {
       alert(error.response?.data?.error || 'Greška pri generiranju sažetka');
     } finally {
@@ -292,372 +399,37 @@
     loadGenerationStatus();
     loadSummaries();
     
-    // refresh 1 min
+    // Refresh status every minute
     setInterval(loadGenerationStatus, 60000);
   });
   </script>
   
   <style scoped>
-  .ai-spotlight-settings {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
+  @media (max-width: 375px) {
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .btn-lg {
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+    }
+    
+    .badge-lg {
+      font-size: 0.75rem;
+    }
   }
   
-  .header {
-    margin-bottom: 2rem;
-    text-align: center;
+  .card {
+    transition: all 0.3s ease;
   }
   
-  .header h2 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-    color: #2c3e50;
-  }
-  
-  .subtitle {
-    color: #7f8c8d;
-    font-size: 0.95rem;
-  }
-  
-  /* Status Generiranja */
-  .generation-status {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
-  }
-  
-  .generation-status.status-limited {
-    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-  }
-  
-  .status-info {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-  }
-  
-  .status-info .icon {
-    font-size: 2rem;
-  }
-  
-  .status-text {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0;
-  }
-  
-  .status-detail {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    margin: 0.25rem 0 0 0;
-  }
-  
-  .btn-generate {
-    background: white;
-    color: #667eea;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s;
-  }
-  
-  .btn-generate:hover:not(:disabled) {
+  .card:hover {
     transform: translateY(-2px);
   }
   
-  .btn-generate:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .feed-section {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-  
-  .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-  
-  .section-header h3 {
-    margin: 0;
-    color: #2c3e50;
-  }
-  
-  .feed-count {
-    background: #3498db;
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
-  
-  .selected-feeds {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-  
-  .feed-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-    transition: background 0.2s;
-  }
-  
-  .feed-item:hover {
-    background: #e9ecef;
-  }
-  
-  .feed-info {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    flex: 1;
-  }
-  
-  .feed-icon {
-    font-size: 1.5rem;
-  }
-  
-  .feed-name {
-    font-weight: 600;
-    color: #2c3e50;
-    margin: 0;
-  }
-  
-  .feed-url {
-    font-size: 0.85rem;
-    color: #7f8c8d;
-    margin: 0.25rem 0 0 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .btn-remove {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-  }
-  
-  .btn-remove:hover {
-    transform: scale(1.1);
-  }
-  
-  .empty-state {
-    text-align: center;
-    padding: 2rem;
-    color: #95a5a6;
-  }
-  
-  .empty-state p {
-    margin: 0.5rem 0;
-  }
-  
-  .hint {
-    font-size: 0.9rem;
-  }
-  
-  .add-feed-section {
-    display: flex;
-    gap: 0.75rem;
-  }
-  
-  .feed-select {
-    flex: 1;
-    padding: 0.75rem;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    background: white;
-    cursor: pointer;
-  }
-  
-  .btn-add {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.2s;
-  }
-  
-  .btn-add:hover:not(:disabled) {
-    background: #229954;
-  }
-  
-  .btn-add:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .max-feeds-notice {
-    text-align: center;
-    padding: 1rem;
-    background: #fff3cd;
-    border-radius: 8px;
-    color: #856404;
-    font-weight: 500;
-  }
-  
-  .summaries-section {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-  
-  .summaries-section h3 {
-    margin-top: 0;
-    color: #2c3e50;
-  }
-  
-  .summary-card {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-  }
-  
-  .summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-  }
-  
-  .summary-header h4 {
-    margin: 0;
-    color: #2c3e50;
-  }
-  
-  .summary-date {
-    font-size: 0.85rem;
-    color: #7f8c8d;
-  }
-  
-  .summary-section {
-    margin-bottom: 1rem;
-  }
-  
-  .summary-section h5 {
-    color: #3498db;
-    margin: 0 0 0.5rem 0;
-  }
-  
-  .summary-section p {
-    color: #555;
-    line-height: 1.6;
-  }
-  
-  .top-articles {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-  }
-  
-  .article-link {
-    color: #3498db;
-    text-decoration: none;
-    font-size: 0.9rem;
-  }
-  
-  .article-link:hover {
-    text-decoration: underline;
-  }
-  
-  .source {
-    color: #95a5a6;
-    font-size: 0.85rem;
-  }
-  
-  .summary-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-    border-top: 1px solid #e0e0e0;
-    color: #7f8c8d;
-    font-size: 0.9rem;
-  }
-  
-  .btn-delete {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.2s;
-  }
-  
-  .btn-delete:hover {
-    background: #c0392b;
-  }
-  
-  /* Dark Mode Support */
-  @media (prefers-color-scheme: dark) {
-    .ai-spotlight-settings {
-      color: #ecf0f1;
-    }
-    
-    .header h2,
-    .section-header h3,
-    .feed-name,
-    .summary-header h4 {
-      color: #ecf0f1;
-    }
-    
-    .feed-section,
-    .summaries-section {
-      background: #2c3e50;
-    }
-    
-    .feed-item {
-      background: #34495e;
-    }
-    
-    .feed-item:hover {
-      background: #3d566e;
-    }
-    
-    .summary-card {
-      background: #34495e;
-      border-color: #445566;
-    }
+  .bg-gradient-to-br {
+    background: linear-gradient(to bottom right, var(--p), var(--s));
   }
   </style>
   
