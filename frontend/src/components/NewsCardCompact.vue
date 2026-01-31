@@ -102,11 +102,12 @@ const toggleBookmark = async () => {
 
 <template>
   <div
-    class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-full overflow-hidden">
+    class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full overflow-hidden"
+    style="min-width: 0;">
     <div class="card-body p-3 sm:p-4">
       <div class="flex gap-3 sm:gap-4 flex-col sm:flex-row">
         <!-- SLIKA VIJESTI -->
-        <div class="flex-shrink-0 cursor-pointer w-full sm:w-auto" @click="openNewsModal">
+        <div class="flex-shrink-0 cursor-pointer w-full sm:w-32" @click="openNewsModal">
           <figure class="relative overflow-hidden w-full sm:w-32 h-40 sm:h-24 rounded-lg bg-base-300">
             <img v-if="imageUrl && !imageError" :src="imageUrl" :alt="news.title"
               class="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-110"
@@ -123,7 +124,7 @@ const toggleBookmark = async () => {
         </div>
 
         <!-- SADRŽAJ -->
-        <div class="flex-1 min-w-0 w-full">
+        <div class="flex-1 min-w-0 w-full overflow-hidden">
           <!-- izvor badge -->
           <div class="mb-2">
             <span class="badge badge-primary badge-sm">
@@ -135,15 +136,15 @@ const toggleBookmark = async () => {
           </div>
 
           <!-- naslov -->
-          <h3 class="card-title text-base leading-tight mb-2">
+          <h3 class="card-title text-base leading-tight mb-2 break-words">
             <a @click.prevent="openNewsModal" href="#"
-              class="line-clamp-2 hover:text-primary transition-colors cursor-pointer">
+              class="line-clamp-2 hover:text-primary transition-colors cursor-pointer w-full">
               {{ news.title }}
             </a>
           </h3>
 
           <!-- kratki opis -->
-          <p class="text-sm opacity-70 line-clamp-2 mb-3">
+          <p class="text-sm opacity-70 line-clamp-2 mb-3 break-words">
             {{ cleanDescription }}
           </p>
 
@@ -193,11 +194,24 @@ const toggleBookmark = async () => {
 
 
 <style scoped>
+.card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .card-body {
+    min-height: 120px;
+  }
 }
 
 @media (max-width: 375px) {
