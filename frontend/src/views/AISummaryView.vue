@@ -33,7 +33,7 @@ const statusText = computed(() => {
   const remaining = generationStatus.value.remainingGenerations;
   if (remaining === 0) return 'Dnevni limit dostignut (3/3)';
   if (remaining === 3) return 'Spremno za generiranje';
-  return `Možeš generirati još ${remaining} sažetaka danas`;
+  return `Možeš generirati još ${remaining} sažetka danas`;
 });
 
 async function loadAIGroup() {
@@ -173,6 +173,10 @@ onMounted(async () => {
                   <p class="text-sm opacity-90">
                     {{ aiGroup.feedIds?.length || 0 }} RSS feedova
                   </p>
+                  <hr></hr>
+                  <p class="text-sm opacity-90">Ai može biti u krivu. </p>
+                  <p>Uvijek sam <b>provjeri tvrdnje!</b>  </p>  
+                  <p> Korištenjem AI funkcije slažeš se sa Google Gemini Privacy Policy i ToS.</p>
                 </div>
               </div>
 
