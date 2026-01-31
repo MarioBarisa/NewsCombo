@@ -40,13 +40,6 @@ const cleanDescription = computed(() => {
 const openNewsModal = () => {
   emit('open-modal', props.news)
 }
-const handleLikeClick = () => {
-  liked.value = !liked.value;
-  if (liked.value && disliked.value) {
-    disliked.value = false;
-  }
-  emit('like', props.news.link, liked.value, props.news); 
-};
 
 const toggleLike = () => {
   if (isDisliked.value) {
@@ -55,14 +48,6 @@ const toggleLike = () => {
   isLiked.value = !isLiked.value
   emit('like', props.news.link, isLiked.value)
 }
-
-const handleDislikeClick = () => {
-  disliked.value = !disliked.value;
-  if (disliked.value && liked.value) {
-    liked.value = false;
-  }
-  emit('dislike', props.news.link, disliked.value, props.news); 
-}; 
 
 const toggleDislike = () => {
   if (isLiked.value) {

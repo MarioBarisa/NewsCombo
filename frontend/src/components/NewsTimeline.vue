@@ -5,7 +5,6 @@ import { useFeedsStore } from '../stores/feedStore'
 import NewsCardCompact from './NewsCardCompact.vue'
 import NewsModal from './NewsModal.vue'
 import FeedSwitcher from './FeedSwitcher.vue'
-import { preferenceService } from '../api/prefrenceService' 
 
 const newsService = useNewsGlobal()
 const feedsStore = useFeedsStore()
@@ -15,7 +14,7 @@ const displayedNews = ref([])
 const currentPage = ref(1)
 const itemsPerPage = 15
 const sortOrder = ref('desc')
-const userPreferences = ref([])
+const userPreferences = ref({})
 const loadMoreTrigger = ref(null)
 const observer = ref(null)
 const loadingMore = ref(false)
@@ -35,12 +34,6 @@ const filteredNews = computed(() => {
 });
 
 const sortedNews = computed(() => {
-  //  odabrana kategorija "Svi feedovi" i postoje preferencije, sortiranje po preferencijama
-  if (feedsStore.selectedCategoryId === 'all' && userPreferences.value.length > 0) {
-    return sortNewsByPreferences(filteredNews.value, userPreferences.value);
-  }
-
-  //else samo po date
   const sorted = [...filteredNews.value]
   return sorted.sort((a, b) => {
     const dateA = new Date(a.pubDate || 0)
@@ -48,8 +41,6 @@ const sortedNews = computed(() => {
     return sortOrder.value === 'desc' ? dateB - dateA : dateA - dateB
   })
 })
-
-
 
 const formatTime = (dateString) => {
   if (!dateString) return ''
@@ -150,46 +141,32 @@ const closeModal = () => {
   }, 300)
 }
 
-const handleLike = async (newsLink, liked, newsItem) => {
-  try {
-    const source = extractSource(newsItem);
-    
-    if (liked) {
-      await preferenceService.likeSource(source);
-    }
-    
-    await loadPreferences();
-    
-    displayedNews.value = sortedNews.value.slice(0, displayedNews.value.length);
-  } catch (error) {
+const handleLike = (newsLink, liked) => {
+  if (liked) {
+    userPreferences.value[newsLink] = 'like'
+  } else {
+    delete userPreferences.value[newsLink]
   }
+  localStorage.setItem('newsPreferences', JSON.stringify(userPreferences.value))
 }
 
-
-const handleDislike = async (newsLink, disliked, newsItem) => {
-  try {
-    const source = extractSource(newsItem);
-    
-    if (disliked) {
-      await preferenceService.dislikeSource(source);
-    }
-    
-    await loadPreferences();
-    
-    displayedNews.value = sortedNews.value.slice(0, displayedNews.value.length);
-  } catch (error) {
+const handleDislike = (newsLink, disliked) => {
+  if (disliked) {
+    userPreferences.value[newsLink] = 'dislike'
+  } else {
+    delete userPreferences.value[newsLink]
   }
+  localStorage.setItem('newsPreferences', JSON.stringify(userPreferences.value))
 }
 
-
-const loadPreferences = async () => {
+const loadPreferences = () => {
   try {
-    const prefs = await preferenceService.getPreferences();
-    userPreferences.value = prefs;
-    console.log('Učitano preferencija:', prefs.length);
+    const saved = localStorage.getItem('newsPreferences')
+    if (saved) {
+      userPreferences.value = JSON.parse(saved)
+    }
   } catch (e) {
-    console.error('Error loading preferences:', e);
-    userPreferences.value = [];
+    console.error('Error loading preferences:', e)
   }
 }
 
@@ -243,7 +220,7 @@ const setSortOldest = async () => {
 };
 
 onMounted(async () => {
-  await loadPreferences()
+  loadPreferences()
   feedsStore.loadFromLocalStorage()
   await refreshNews()
 
