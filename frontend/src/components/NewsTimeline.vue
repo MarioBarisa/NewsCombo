@@ -96,26 +96,30 @@ const loadMore = () => {
 
 // refresh po odabranoj kategoriji
 const refreshNews = async () => {
+  if (loading.value) {
+    console.log('Refresh vec u procesu');
+    return;
+  }
   try {
-    feedsStore.loadFromLocalStorage()
-    const categoryId = feedsStore.selectedCategoryId
-    console.log('Učitavam vijesti za kategoriju:', categoryId)
-    const fetchedNews = await newsService.fetchNews(categoryId)
-
+    feedsStore.loadFromLocalStorage();
+    const categoryId = feedsStore.selectedCategoryId;
+    console.log('🔄 Refresham vijesti za kategoriju:', categoryId);
+    const fetchedNews = await newsService.refreshNews(categoryId);
+    
     if (fetchedNews && fetchedNews.length > 0) {
-      console.log('Učitano', fetchedNews.length, 'vijesti')
-      allNews.value = fetchedNews
-      displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
-      currentPage.value = 1
+      console.log(' Učitano', fetchedNews.length, 'vijesti');
+      allNews.value = fetchedNews;
+      displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+      currentPage.value = 1;
     } else {
-      console.warn('⚠️ Nema vijesti za ovu kategoriju')
-      allNews.value = []
-      displayedNews.value = []
+      console.warn(' Nema vijesti za ovu kategoriju');
+      allNews.value = [];
+      displayedNews.value = [];
     }
   } catch (err) {
-    console.error('Error refreshing news:', err)
+    console.error('Error refreshing news:', err);
   }
-}
+};
 
 const loadDemoNews = () => {
   console.log('demo vijesti')
@@ -259,13 +263,18 @@ onUnmounted(() => {
           :disabled="loading">
           Najstarije
         </button>
-        <button @click="refreshNews" class="btn btn-sm btn-outline" :class="{ 'loading': loading }" :disabled="loading">
-          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+        <button 
+  @click="refreshNews" 
+  class="btn btn-sm btn-outline"
+  :class="{ 'loading': loading }"
+  :disabled="loading"
+>
+  <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+  <span v-if="!loading">Refresh</span>
+  <span v-else>Učitavam...</span>
+</button>
       </div>
     </div>
 
