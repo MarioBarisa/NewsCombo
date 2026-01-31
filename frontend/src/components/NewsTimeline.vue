@@ -94,7 +94,7 @@
     }, 300)
   }
   
-  // refresh po adabranoj kategoriji
+  // refresh po odabranoj kategoriji
   const refreshNews = async () => {
     try {
       feedsStore.loadFromLocalStorage()
@@ -268,7 +268,7 @@
             Najstarije
             </button>
           <button 
-            @click="setSortOldest" 
+            @click="refreshNews" 
             class="btn btn-sm btn-outline"
             :class="{ 'loading': loading }"
             :disabled="loading"
