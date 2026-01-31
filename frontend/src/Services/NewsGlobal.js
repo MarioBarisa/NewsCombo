@@ -446,6 +446,7 @@ const getMockNews = () => {
   ];
 };
 
+//ne koristi se
 const getSourceStats = computed(() => {
   return Object.keys(newsBySource.value).map(source => ({
     name: source,
@@ -453,6 +454,8 @@ const getSourceStats = computed(() => {
   }));
 });
 
+
+//ne korsiti se
 const getCategoryStats = computed(() => {
   const stats = {};
   cachedNews.value.forEach(news => {
@@ -461,6 +464,53 @@ const getCategoryStats = computed(() => {
   });
   return stats;
 });
+
+
+export function sortNewsByPreferences(news, preferences) {
+  const scoreMap = {};
+  preferences.forEach(pref => {
+    scoreMap[pref.source] = pref.score || 0;
+  });
+
+  return [...news].sort((a, b) => { //shallow kopija news array -> da news ostane isti kao i prije nakon sort-a
+    const sourceA = extractSource(a);
+    const sourceB = extractSource(b);
+
+    // fect scores
+    const scoreA = scoreMap[sourceA] || 0;
+    const scoreB = scoreMap[sourceB] || 0;
+
+    // prvo sort po score
+    if (scoreB !== scoreA) {
+      return scoreB - scoreA;
+    }
+
+    // scoreovi su isti -> prvo najnoviji datum
+    const dateA = new Date(a.pubDate || 0);
+    const dateB = new Date(b.pubDate || 0);
+    return dateB - dateA;
+  });
+}
+
+
+//za dodavnje izvora za like /dislike
+function extractSource(newsItem) {
+  if (newsItem.feedDomain) {
+    return newsItem.feedDomain;
+  }
+  
+  if (newsItem.link) {
+    try {
+      const url = new URL(newsItem.link);
+      return url.hostname.replace('www.', '');
+    } catch (e) {
+      return 'unknown';
+    }
+  }
+  
+  return 'unknown';
+}
+
 
 export function useNewsGlobal() {
   return {
@@ -474,7 +524,9 @@ export function useNewsGlobal() {
     fetchNews,
     refreshNews,
     getNewsByCategory,
-    getMockNews
+    getMockNews,
+    sortNewsByPreferences,
+    extractSource
   };
 }
 
