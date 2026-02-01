@@ -150,7 +150,7 @@ const toggleBookmark = async () => {
 
           <!-- naredbe nad vijestima -->
           <div class="flex justify-between items-center flex-wrap gap-2">
-            <div class="flex gap-1">
+            <div class="flex gap-1"> <!-- 
               <button @click="toggleLike" class="btn btn-xs btn-circle" :class="isLiked ? 'btn-error' : 'btn-ghost'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="isLiked ? 'currentColor' : 'none'"
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -166,7 +166,7 @@ const toggleBookmark = async () => {
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-
+                          -->
               <button @click="toggleBookmark" class="btn btn-xs btn-circle ml-1"
                 :class="isBookmarked ? 'btn-primary' : 'btn-ghost'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="isBookmarked ? 'currentColor' : 'none'"

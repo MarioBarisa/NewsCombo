@@ -156,6 +156,7 @@
           <div
             class="sticky bottom-0 z-10 bg-base-100/95 backdrop-blur-lg border-t border-base-300 px-6 py-3 flex justify-between items-center shadow-lg">
             <div class="flex gap-2">
+              <!-- 
               <button @click="toggleLike" class="btn btn-sm btn-circle tooltip"
                 :class="isLiked ? 'btn-error' : 'btn-ghost'" data-tip="Sviđa mi se">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isLiked ? 'currentColor' : 'none'"
@@ -171,7 +172,8 @@
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button> <button @click="toggleBookmark" class="btn btn-sm btn-circle tooltip ml-2"
+              </button> -->
+              <button @click="toggleBookmark" class="btn btn-sm btn-circle tooltip ml-2"
                 :class="isBookmarked ? 'btn-primary' : 'btn-ghost'" data-tip="Spremi za kasnije">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isBookmarked ? 'currentColor' : 'none'"
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
