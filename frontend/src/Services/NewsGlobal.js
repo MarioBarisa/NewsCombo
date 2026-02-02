@@ -201,64 +201,37 @@ const parseRSSFeed = (xmlText, feed) => {
   }
 };
 
-const fetchRSSFeed = async (feedUrl, feedName, retries = 3, forceRefresh = false) => {
-  const finalUrl = forceRefresh ? getCacheBustingUrl(feedUrl) : feedUrl;
+async function fetchRSSFeed(feed, retries = 3) {
+  const API_URL = 'http://localhost:3005';
   
-  for (let attempt = 0; attempt < retries; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const proxyUrl = getProxyUrl(finalUrl);
+      console.log(`REFRESH[${feed.domain}] Pokušaj ${attempt}/${retries}`);
       
-      console.log(`REFRESH[${feedName}] Pokušaj ${attempt + 1}/${retries}${forceRefresh ? ' (FORCE REFRESH)' : ''}`);
+      const response = await axios.get(`${API_URL}/rss/parse/${feed.id}`);
       
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: { 
-          'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        signal: controller.signal,
-        mode: 'cors',
-        cache: 'no-store'
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (response.data && response.data.articles) {
+        console.log(`${feed.naziv}: ${response.data.articles.length} članaka`);
+        return response.data.articles;
       }
       
-      const text = await response.text();
+      throw new Error('Nema članaka');
       
-      if (!text || text.length < 50) {
-        throw new Error('Invalid response length');
+    } catch (error) {
+      console.warn(` ${feed.domain} pokušaj ${attempt}/${retries}:`, error.message);
+      
+      if (attempt === retries) {
+        console.error(`Greška pri dohvatu ${feed.naziv}:`, error);
+        return [];
       }
       
-      if (!text.includes('<?xml') && !text.includes('<rss') && !text.includes('<feed')) {
-        throw new Error('LOŠ XML format');
-      }
-      
-      console.log(`[${feedName}] Uspješno dohvaćeno ${text.length} bytes`);
-      return text;
-      
-    } catch (err) {
-      clearTimeout(timeoutId);
-      
-      console.warn(` ${feedName} pokušaj ${attempt + 1}/${retries}: ${err.message}`);
-      
-      if (attempt < retries - 1) {
-        rotateProxy();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
   }
   
-  throw new Error(`Failed after ${retries} attempts`);
-};
+  return [];
+}
+
 
   const sortAndUpdateNews = () => {
   const allItems = Object.values(newsBySource.value).flat();

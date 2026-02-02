@@ -9,24 +9,15 @@ export default function createNewsRoutes(db) {
     { id: '2', naziv: 'Večernji list', url: 'https://www.vecernji.hr/rss', domain: 'vecernji.hr', kategorija: 'hrvatska', isCustom: false },
     { id: '3', naziv: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', kategorija: 'hrvatska', isCustom: false },
     { id: '4', naziv: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', kategorija: 'tech', isCustom: false },
-    
-    // world
     { id: '5', naziv: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', kategorija: 'world', isCustom: false },
     { id: '6', naziv: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', kategorija: 'world', isCustom: false },
-    
-    // it
     { id: '7', naziv: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', kategorija: 'tech', isCustom: false },
     { id: '8', naziv: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', domain: 'arstechnica.com', kategorija: 'tech', isCustom: false },
     { id: '9', naziv: 'Hacker News', url: 'https://hnrss.org/frontpage', domain: 'news.ycombinator.com', kategorija: 'tech', isCustom: false },
     { id: '10', naziv: 'MIT Technology Review', url: 'https://www.technologyreview.com/feed/', domain: 'technologyreview.com', kategorija: 'tech', isCustom: false },
-    
-    // znanost
     { id: '11', naziv: 'Aeon', url: 'https://aeon.co/feed.rss', domain: 'aeon.co', kategorija: 'science', isCustom: false },
-    
-    // posao
     { id: '12', naziv: 'Financial Times', url: 'https://www.ft.com/?format=rss', domain: 'ft.com', kategorija: 'business', isCustom: false },
   ];
-
 
   const inicijalneGrupe = [
     { id: 1, naziv: "Tech", opis: "Tehnološke vijesti", feedIds: [3, 4] },
@@ -47,8 +38,9 @@ export default function createNewsRoutes(db) {
   router.post("/pocetnoStanjeFeed", async (req, res) => {
     let feedCollection = db.collection("rss_feedovi");
     try {
-      await feedCollection.deleteMany({});
-      let result = await feedCollection.insertMany(inicijalniRSSFeedovi);
+      await feedCollection.deleteMany({ userId: req.user.userId });
+      const feedsWithUserId = inicijalniRSSFeedovi.map(f => ({ ...f, userId: req.user.userId }));
+      let result = await feedCollection.insertMany(feedsWithUserId);
       res.status(200).json({ 
         poruka: "USPJEH -> Feedovi postavljenji",
         insertedCount: result.insertedCount 
@@ -62,8 +54,9 @@ export default function createNewsRoutes(db) {
   router.post("/pocetnoGrupe", async (req, res) => {
     let grupeCollection = db.collection("grupe");
     try {
-      await grupeCollection.deleteMany({});
-      let result = await grupeCollection.insertMany(inicijalneGrupe);
+      await grupeCollection.deleteMany({ userId: req.user.userId });
+      const grupeWithUserId = inicijalneGrupe.map(g => ({ ...g, userId: req.user.userId }));
+      let result = await grupeCollection.insertMany(grupeWithUserId);
       res.status(200).json({ 
         poruka: "USPJEH -> Grupe inicijalizirane",
         insertedCount: result.insertedCount 
@@ -77,8 +70,9 @@ export default function createNewsRoutes(db) {
   router.post("/pocetnoClanci", async (req, res) => {
     let clanci = db.collection("clanci");
     try {
-      await clanci.deleteMany({});
-      let result = await clanci.insertMany(inicijalniClanciMock);
+      await clanci.deleteMany({ userId: req.user.userId });
+      const clanciWithUserId = inicijalniClanciMock.map(c => ({ ...c, userId: req.user.userId }));
+      let result = await clanci.insertMany(clanciWithUserId);
       res.status(200).json({ 
         poruka: "USPJEH -> Članci inicijalizirani",
         insertedCount: result.insertedCount 
@@ -99,7 +93,7 @@ export default function createNewsRoutes(db) {
   router.get("/feedovi", async (req, res) => {
     try {
       const collection = db.collection("rss_feedovi");
-      const feedovi = await collection.find().toArray();
+      const feedovi = await collection.find({ userId: req.user.userId }).toArray();
       res.status(200).json(feedovi);
     } catch (error) {
       res.status(400).json({ error: "Greška pri dohvatu feedova", details: error.message });
@@ -111,7 +105,7 @@ export default function createNewsRoutes(db) {
     try {
       const feedId = parseInt(req.params.id);
       const collection = db.collection("rss_feedovi");
-      const feed = await collection.findOne({ id: feedId });
+      const feed = await collection.findOne({ id: feedId, userId: req.user.userId });
       
       if (!feed) {
         return res.status(404).json({ error: "Feed nije pronađen" });
@@ -134,7 +128,7 @@ export default function createNewsRoutes(db) {
 
     try {
       const collection = db.collection("rss_feedovi");
-      const sviFeedi = await collection.find().toArray();
+      const sviFeedi = await collection.find({ userId: req.user.userId }).toArray();
       const noviId = Math.max(...sviFeedi.map(f => f.id), 0) + 1;
 
       const result = await collection.insertOne({
@@ -142,7 +136,8 @@ export default function createNewsRoutes(db) {
         naziv: naziv,
         url: url,
         kategorija: kategorija,
-        isCustom: "true"
+        isCustom: "true",
+        userId: req.user.userId
       });
 
       res.status(201).json({ 
@@ -160,7 +155,7 @@ export default function createNewsRoutes(db) {
     try {
       const feedId = parseInt(req.params.id);
       const collection = db.collection("rss_feedovi");
-      const result = await collection.deleteOne({ id: feedId });
+      const result = await collection.deleteOne({ id: feedId, userId: req.user.userId });
 
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: "Feed nije pronađen" });
@@ -183,7 +178,7 @@ export default function createNewsRoutes(db) {
 
       const collection = db.collection("rss_feedovi");
       const result = await collection.updateOne(
-        { id: feedId },
+        { id: feedId, userId: req.user.userId },
         { $set: { naziv, url, kategorija } }
       );
 
@@ -211,7 +206,7 @@ export default function createNewsRoutes(db) {
 
       const collection = db.collection("rss_feedovi");
       const result = await collection.updateOne(
-        { id: feedId },
+        { id: feedId, userId: req.user.userId },
         { $set: { kategorija } }
       );
 
@@ -232,7 +227,7 @@ export default function createNewsRoutes(db) {
     try {
       const kategorija = req.params.kategorija;
       const collection = db.collection("rss_feedovi");
-      const feedovi = await collection.find({ kategorija: kategorija }).toArray();
+      const feedovi = await collection.find({ kategorija: kategorija, userId: req.user.userId }).toArray();
       
       res.status(200).json(feedovi);
     } catch (error) {
@@ -246,7 +241,7 @@ export default function createNewsRoutes(db) {
   router.get("/grupe", async (req, res) => {
     try {
       const collection = db.collection("grupe");
-      const grupe = await collection.find().toArray();
+      const grupe = await collection.find({ userId: req.user.userId }).toArray();
       res.status(200).json(grupe);
     } catch (error) {
       res.status(400).json({ error: "Greška pri dohvatu grupa", details: error.message });
@@ -258,7 +253,7 @@ export default function createNewsRoutes(db) {
     try {
       const grupaId = parseInt(req.params.id);
       const collection = db.collection("grupe");
-      const grupa = await collection.findOne({ id: grupaId });
+      const grupa = await collection.findOne({ id: grupaId, userId: req.user.userId });
       
       if (!grupa) {
         return res.status(404).json({ error: "Grupa nije pronađena" });
@@ -281,14 +276,15 @@ export default function createNewsRoutes(db) {
 
     try {
       const collection = db.collection("grupe");
-      const sveGrupe = await collection.find().toArray();
+      const sveGrupe = await collection.find({ userId: req.user.userId }).toArray();
       const noviId = Math.max(...sveGrupe.map(g => g.id), 0) + 1;
 
       const result = await collection.insertOne({
         id: noviId,
         naziv: naziv,
         opis: opis,
-        feedIds: feedIds
+        feedIds: feedIds,
+        userId: req.user.userId
       });
 
       res.status(201).json({ 
@@ -305,7 +301,7 @@ export default function createNewsRoutes(db) {
     try {
       const grupaId = parseInt(req.params.id);
       const collection = db.collection("grupe");
-      const result = await collection.deleteOne({ id: grupaId });
+      const result = await collection.deleteOne({ id: grupaId, userId: req.user.userId });
 
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: "Grupa nije pronađena" });
@@ -328,7 +324,7 @@ export default function createNewsRoutes(db) {
 
       const collection = db.collection("grupe");
       const result = await collection.updateOne(
-        { id: grupaId },
+        { id: grupaId, userId: req.user.userId },
         { $set: { naziv, opis, feedIds } }
       );
 
@@ -356,7 +352,7 @@ export default function createNewsRoutes(db) {
 
       const collection = db.collection("grupe");
       const result = await collection.updateOne(
-        { id: grupaId },
+        { id: grupaId, userId: req.user.userId },
         { $set: { feedIds } }
       );
 
@@ -378,7 +374,7 @@ export default function createNewsRoutes(db) {
   router.get("/clanci", async (req, res) => {
     try {
       const collection = db.collection("clanci");
-      const clanci = await collection.find().toArray();
+      const clanci = await collection.find({ userId: req.user.userId }).toArray();
       res.status(200).json(clanci);
     } catch (error) {
       res.status(400).json({ error: "Greška pri dohvatu članaka", details: error.message });
@@ -390,7 +386,7 @@ export default function createNewsRoutes(db) {
     try {
       const clanakId = parseInt(req.params.id);
       const collection = db.collection("clanci");
-      const clanak = await collection.findOne({ id: clanakId });
+      const clanak = await collection.findOne({ id: clanakId, userId: req.user.userId });
       
       if (!clanak) {
         return res.status(404).json({ error: "Članak nije pronađen" });
@@ -400,8 +396,6 @@ export default function createNewsRoutes(db) {
       res.status(400).json({ error: "Greška pri dohvatu članka", details: error.message });
     }
   });
-    
-    
 
   // POST /clanci - dodaj novi članak
   router.post("/clanci", async (req, res) => {
@@ -415,7 +409,7 @@ export default function createNewsRoutes(db) {
 
     try {
       const collection = db.collection("clanci");
-      const sviClanci = await collection.find().toArray();
+      const sviClanci = await collection.find({ userId: req.user.userId }).toArray();
       const noviId = Math.max(...sviClanci.map(c => c.id), 0) + 1;
 
       const result = await collection.insertOne({
@@ -424,7 +418,8 @@ export default function createNewsRoutes(db) {
         opis: opis,
         feedId: feedId,
         datuma: datuma,
-        procitano: procitano || false
+        procitano: procitano || false,
+        userId: req.user.userId
       });
 
       res.status(201).json({ 
@@ -436,13 +431,12 @@ export default function createNewsRoutes(db) {
     }
   });
 
-    
   // DELETE /clanci/:id - obriši članak
   router.delete("/clanci/:id", async (req, res) => {
     try {
       const clanakId = parseInt(req.params.id);
       const collection = db.collection("clanci");
-      const result = await collection.deleteOne({ id: clanakId });
+      const result = await collection.deleteOne({ id: clanakId, userId: req.user.userId });
 
       if (result.deletedCount === 0) {
         return res.status(404).json({ error: "Članak nije pronađen" });
@@ -453,7 +447,6 @@ export default function createNewsRoutes(db) {
     }
   });
 
-    
   // PUT /clanci/:id - ažurira kompletan članak
   router.put("/clanci/:id", async (req, res) => {
     try {
@@ -466,7 +459,7 @@ export default function createNewsRoutes(db) {
 
       const collection = db.collection("clanci");
       const result = await collection.updateOne(
-        { id: clanakId },
+        { id: clanakId, userId: req.user.userId },
         { $set: { naziv, opis, feedId, datuma, procitano: procitano || false } }
       );
 
@@ -494,7 +487,7 @@ export default function createNewsRoutes(db) {
 
       const collection = db.collection("clanci");
       const result = await collection.updateOne(
-        { id: clanakId },
+        { id: clanakId, userId: req.user.userId },
         { $set: { procitano } }
       );
 
@@ -516,7 +509,7 @@ export default function createNewsRoutes(db) {
     try {
       const feedId = parseInt(req.params.feedId);
       const collection = db.collection("clanci");
-      const clanci = await collection.find({ feedId: feedId }).toArray();
+      const clanci = await collection.find({ feedId: feedId, userId: req.user.userId }).toArray();
       
       res.status(200).json(clanci);
     } catch (error) {
@@ -528,14 +521,13 @@ export default function createNewsRoutes(db) {
   router.get("/clanci/procitani/false", async (req, res) => {
     try {
       const collection = db.collection("clanci");
-      const clanci = await collection.find({ procitano: false }).toArray();
+      const clanci = await collection.find({ procitano: false, userId: req.user.userId }).toArray();
       
       res.status(200).json(clanci);
     } catch (error) {
       res.status(400).json({ error: "Greška pri dohvatu nepročitanih članaka", details: error.message });
     }
   });
-
 
   //Provjera RSS LINKA -> validacija
 router.get("/rss/validate", async (req, res) => {
@@ -549,7 +541,6 @@ router.get("/rss/validate", async (req, res) => {
   }
 
   try {
-    // import rss-parser-a 
     const Parser = (await import('rss-parser')).default;
     const parser = new Parser({
       timeout: 5000, 
@@ -582,7 +573,134 @@ router.get("/rss/validate", async (req, res) => {
     });
   }
 });
+  
+  
+  // RSS PARSER ENDPOINT - za frontend
+router.get("/rss/parse/:feedId", async (req, res) => {
+  try {
+    const feedId = parseInt(req.params.feedId);
+    const feedCollection = db.collection("rss_feedovi");
+    
+    const feed = await feedCollection.findOne({ 
+      id: feedId, 
+      userId: req.user.userId 
+    });
+    
+    if (!feed) {
+      return res.status(404).json({ error: "Feed nije pronađen" });
+    }
+
+    const Parser = (await import('rss-parser')).default;
+    const parser = new Parser({
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'NewsCombo/1.0',
+      }
+    });
+
+    const rssFeed = await parser.parseURL(feed.url);
+    
+    const articles = rssFeed.items.slice(0, 30).map(item => ({
+      title: item.title || "Bez naslova",
+      description: item.contentSnippet || item.description || "",
+      content: item.content || item.description || "",
+      link: item.link,
+      pubDate: item.pubDate,
+      isoDate: item.isoDate,
+      guid: item.guid || item.link,
+      source: feed.naziv,
+      feedId: feed.id,
+      category: feed.kategorija,
+      enclosure: item.enclosure
+    }));
+
+    res.json({
+      feedId: feed.id,
+      feedName: feed.naziv,
+      articles: articles,
+      totalCount: articles.length
+    });
+
+  } catch (error) {
+    console.error('RSS parse greška:', error);
+    res.status(500).json({ 
+      error: "Greška pri parsiranju RSS-a", 
+      details: error.message 
+    });
+  }
+});
+
+// Batch endpoint
+router.post("/rss/parse-multiple", async (req, res) => {
+  try {
+    const { feedIds } = req.body;
+    
+    if (!feedIds || !Array.isArray(feedIds)) {
+      return res.status(400).json({ error: "feedIds mora biti niz" });
+    }
+
+    const feedCollection = db.collection("rss_feedovi");
+    const Parser = (await import('rss-parser')).default;
+    const parser = new Parser({
+      timeout: 10000,
+      headers: { 'User-Agent': 'NewsCombo/1.0' }
+    });
+
+    const results = [];
+
+    for (const feedId of feedIds) {
+      try {
+        const feed = await feedCollection.findOne({ 
+          id: parseInt(feedId), 
+          userId: req.user.userId 
+        });
+        
+        if (!feed) continue;
+
+        const rssFeed = await parser.parseURL(feed.url);
+        
+        const articles = rssFeed.items.slice(0, 30).map(item => ({
+          title: item.title || "Bez naslova",
+          description: item.contentSnippet || item.description || "",
+          content: item.content || item.description || "",
+          link: item.link,
+          pubDate: item.pubDate,
+          isoDate: item.isoDate,
+          guid: item.guid || item.link,
+          source: feed.naziv,
+          feedId: feed.id,
+          category: feed.kategorija,
+          enclosure: item.enclosure
+        }));
+
+        results.push({
+          feedId: feed.id,
+          feedName: feed.naziv,
+          articles: articles
+        });
+
+      } catch (error) {
+        console.error(`Feed ${feedId} greška:`, error.message);
+        continue;
+      }
+    }
+
+    const allArticles = results.flatMap(r => r.articles);
+
+    res.json({
+      feeds: results,
+      totalArticles: allArticles.length,
+      articles: allArticles
+    });
+
+  } catch (error) {
+    res.status(500).json({ 
+      error: "Greška pri parsiranju feedova", 
+      details: error.message 
+    });
+  }
+});
+
 
   return router;
 }
-

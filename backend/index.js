@@ -10,6 +10,8 @@ import { connectToDatabase } from './mongo.js';
 import createNewsRoutes from "./routes/newsRoutes.js";
 import createBookmarkRoutes from "./routes/bookMarkRoutes.js";
 import createAIRoutes from "./routes/aiRoutes.js";
+import createAuthRoutes from "./routes/authRoutes.js";
+import { authMiddleware } from "./middleware/auth.js";
 
 const logger = (req, res, next) => {
     const timeStamp = new Date().toISOString();
@@ -23,10 +25,15 @@ const logger = (req, res, next) => {
 
 app.use(logger);
 
-
 async function startNC() {
     try {
         const db = await connectToDatabase();
+        
+        // Auth routes 
+        app.use('/api', createAuthRoutes(db));
+        
+        // Zaštićene rute
+        app.use(authMiddleware);
         app.use(createNewsRoutes(db));
         app.use(createBookmarkRoutes(db));
         app.use('/api', createAIRoutes(db)); 
@@ -40,7 +47,4 @@ async function startNC() {
     }
 }
 
-
-
 startNC();
-

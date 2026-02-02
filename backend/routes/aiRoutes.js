@@ -18,7 +18,7 @@ export default function createAIRoutes(db) {
   router.get("/ai-grupa", async (req, res) => {
     try {
       const collection = db.collection("ai_grupa");
-      let aiGrupa = await collection.findOne({ type: "ai_spotlight" });
+      let aiGrupa = await collection.findOne({ type: "ai_spotlight", userId: req.user.userId });
       
       if (!aiGrupa) {
         aiGrupa = {
@@ -26,6 +26,7 @@ export default function createAIRoutes(db) {
           feedIds: [],
           generatedToday: 0,
           lastResetDate: new Date().toDateString(),
+          userId: req.user.userId,
           createdAt: new Date()
         };
         await collection.insertOne(aiGrupa);
@@ -49,14 +50,14 @@ export default function createAIRoutes(db) {
       const collection = db.collection("ai_grupa");
       const feedCollection = db.collection("rss_feedovi");
       
-      let feed = await feedCollection.findOne({ id: parseInt(feedId) });
-      if (!feed) feed = await feedCollection.findOne({ id: feedId.toString() });
+      let feed = await feedCollection.findOne({ id: parseInt(feedId), userId: req.user.userId });
+      if (!feed) feed = await feedCollection.findOne({ id: feedId.toString(), userId: req.user.userId });
       
       if (!feed) {
         return res.status(404).json({ error: "Feed ne postoji" });
       }
 
-      const aiGrupa = await collection.findOne({ type: "ai_spotlight" });
+      const aiGrupa = await collection.findOne({ type: "ai_spotlight", userId: req.user.userId });
       if (!aiGrupa) {
         return res.status(404).json({ error: "AI grupa ne postoji" });
       }
@@ -75,7 +76,7 @@ export default function createAIRoutes(db) {
       }
 
       await collection.updateOne(
-        { type: "ai_spotlight" },
+        { type: "ai_spotlight", userId: req.user.userId },
         { $push: { feedIds: feedIdValue }, $set: { updatedAt: new Date() } }
       );
 
@@ -95,7 +96,7 @@ export default function createAIRoutes(db) {
     try {
       const collection = db.collection("ai_grupa");
       const result = await collection.updateOne(
-        { type: "ai_spotlight" },
+        { type: "ai_spotlight", userId: req.user.userId },
         { 
           $pull: { feedIds: { $in: [feedId, feedId.toString(), parseInt(feedId) || feedId] } },
           $set: { updatedAt: new Date() }
@@ -117,7 +118,7 @@ export default function createAIRoutes(db) {
       const collection = db.collection("ai_grupa");
       const currentDate = new Date().toDateString();
       
-      let aiGrupa = await collection.findOne({ type: "ai_spotlight" });
+      let aiGrupa = await collection.findOne({ type: "ai_spotlight", userId: req.user.userId });
       
       if (!aiGrupa) {
         return res.status(404).json({ error: "AI grupa ne postoji" });
@@ -125,7 +126,7 @@ export default function createAIRoutes(db) {
 
       if (aiGrupa.lastResetDate !== currentDate) {
         await collection.updateOne(
-          { type: "ai_spotlight" },
+          { type: "ai_spotlight", userId: req.user.userId },
           { 
             $set: { 
               generatedToday: 0,
@@ -160,7 +161,7 @@ export default function createAIRoutes(db) {
       const summaryCollection = db.collection("ai_summaries");
       const currentDate = new Date().toDateString();
   
-      let aiGrupa = await aiGrupaCollection.findOne({ type: "ai_spotlight" });
+      let aiGrupa = await aiGrupaCollection.findOne({ type: "ai_spotlight", userId: req.user.userId });
       
       if (!aiGrupa) {
         return res.status(404).json({ error: "AI grupa ne postoji" });
@@ -168,7 +169,7 @@ export default function createAIRoutes(db) {
   
       if (aiGrupa.lastResetDate !== currentDate) {
         await aiGrupaCollection.updateOne(
-          { type: "ai_spotlight" },
+          { type: "ai_spotlight", userId: req.user.userId },
           { 
             $set: { 
               generatedToday: 0,
@@ -193,9 +194,9 @@ export default function createAIRoutes(db) {
   
       const feeds = [];
       for (const feedId of aiGrupa.feedIds) {
-        let feed = await feedCollection.findOne({ id: feedId });
-        if (!feed) feed = await feedCollection.findOne({ id: feedId.toString() });
-        if (!feed && !isNaN(feedId)) feed = await feedCollection.findOne({ id: parseInt(feedId) });
+        let feed = await feedCollection.findOne({ id: feedId, userId: req.user.userId });
+        if (!feed) feed = await feedCollection.findOne({ id: feedId.toString(), userId: req.user.userId });
+        if (!feed && !isNaN(feedId)) feed = await feedCollection.findOne({ id: parseInt(feedId), userId: req.user.userId });
         if (feed) feeds.push(feed);
       }
   
@@ -235,6 +236,7 @@ export default function createAIRoutes(db) {
         summary: aiSummary,
         articlesCount: allArticles.length,
         feedsSources: feeds.map(f => f.naziv),
+        userId: req.user.userId,
         generatedAt: new Date(),
         generationNumber: (aiGrupa.generatedToday || 0) + 1
       };
@@ -242,7 +244,7 @@ export default function createAIRoutes(db) {
       await summaryCollection.insertOne(summaryDoc);
   
       await aiGrupaCollection.updateOne(
-        { type: "ai_spotlight" },
+        { type: "ai_spotlight", userId: req.user.userId },
         { 
           $inc: { generatedToday: 1 },
           $set: { updatedAt: new Date() }
@@ -275,7 +277,7 @@ export default function createAIRoutes(db) {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const summaries = await collection
-        .find({ generatedAt: { $gte: sevenDaysAgo } })
+        .find({ generatedAt: { $gte: sevenDaysAgo }, userId: req.user.userId })
         .sort({ generatedAt: -1 })
         .toArray();
 
@@ -290,7 +292,8 @@ export default function createAIRoutes(db) {
       const summaryCollection = db.collection("ai_summaries");
       
       const result = await summaryCollection.deleteOne({ 
-        _id: req.params.id
+        _id: req.params.id,
+        userId: req.user.userId
       });
   
       if (result.deletedCount === 0) {

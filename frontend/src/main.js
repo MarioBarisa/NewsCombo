@@ -1,15 +1,20 @@
-import './assets/main.css'
-
 import { createApp } from 'vue'
-import App from './App.vue'
 import { createPinia } from 'pinia'
-import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
-import router from './router' 
+import App from './App.vue'
+import router from './router'
+import './assets/main.css'
+import axios from 'axios'
 
-const pinia = createPinia()
-pinia.use(piniaPluginPersistedstate)
+// Dodaj token na sve axios pozive
+axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 const app = createApp(App)
-app.use(pinia)
-app.use(router) 
+app.use(createPinia())
+app.use(router)
 app.mount('#app')

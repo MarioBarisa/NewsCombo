@@ -1,23 +1,25 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
 import { onMounted } from 'vue'
 import NavBar from './components/NavBar.vue'
-// import GlobalVijestiBanner from './components/GlobalVijestiBanner.vue'
 import { useThemeStore } from './stores/theme'
 import { useFeedsStore } from './stores/feedStore'
-
+import { useAuthStore } from './stores/authStore'
 
 const themeStore = useThemeStore()
-const feedsStore = useFeedsStore();
+const feedsStore = useFeedsStore()
+const authStore = useAuthStore()
 
-// Inicijaliziraj temu pri učitavanju aplikacije
 onMounted(async() => {
   themeStore.initTheme()
-  await feedsStore.initializeStore();
+  await authStore.fetchUser()
+  if (authStore.isAuthenticated) {
+    await feedsStore.initializeStore()
+  }
 })
 </script>
 
 <template>
-  <NavBar></NavBar>
+  <NavBar v-if="authStore.isAuthenticated"></NavBar>
   <RouterView></RouterView>
 </template>

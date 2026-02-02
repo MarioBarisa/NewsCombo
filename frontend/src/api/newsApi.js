@@ -1,102 +1,93 @@
-import axios from "axios";
+import axios from 'axios';
 
 const API_BASE_URL = "http://localhost:3005";
 
-const apiClient = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        "Content-Type": "application/json",
-    }
-})
-
 export default {
     getAllFeeds() {
-        return apiClient.get("/feedovi");
+        return axios.get(`${API_BASE_URL}/feedovi`);
     },
 
     getFeedById(id) {
-        return apiClient.get(`/feedovi/${id}`);
+        return axios.get(`${API_BASE_URL}/feedovi/${id}`);
     },
 
     createFeed(data) {
-        return apiClient.post("/feedovi", data);
+        return axios.post(`${API_BASE_URL}/feedovi`, data);
     },
 
     deleteFeed(id) {
-        return apiClient.delete(`/feedovi/${id}`);
+        return axios.delete(`${API_BASE_URL}/feedovi/${id}`);
     },
 
     updateFeed(id, data) {
-        return apiClient.put(`/feedovi/${id}`, data);
+        return axios.put(`${API_BASE_URL}/feedovi/${id}`, data);
     },
 
-    updateFeedCategory(id, kategortija) {
-        return apiClient.patch(`/feedovi/${id}/kategorija`, { kategorija });
+    updateFeedCategory(id, kategorija) {
+        return axios.patch(`${API_BASE_URL}/feedovi/${id}/kategorija`, { kategorija });
     },
 
     getFeedsByCategory(kategorija) {
-        return apiClient.get(`/feedovi/kategorija/${kategorija}`);
+        return axios.get(`${API_BASE_URL}/feedovi/kategorija/${kategorija}`);
     },
     
     //GRUPE
 
     getAllGropus() {
-        return apiClient.get("/grupe");
+        return axios.get(`${API_BASE_URL}/grupe`);
     },
 
     getGroupById(id) {
-        return apiClient.get(`/grupe/${id}`);
+        return axios.get(`${API_BASE_URL}/grupe/${id}`);
     },
 
     createGroup(data) {
-        return apiClient.post("/grupe", data);
+        return axios.post(`${API_BASE_URL}/grupe`, data);
     },
 
     updateGroup(id, data) {
-        return apiClient.put(`/grupe/${id}`, data);
+        return axios.put(`${API_BASE_URL}/grupe/${id}`, data);
     },
 
     updateGroupFeedIds(id, feedIds) {
-        return apiClient.patch(`/grupe/${id}/feedIds`, { feedIds });
+        return axios.patch(`${API_BASE_URL}/grupe/${id}/feedIds`, { feedIds });
     },
     
     deleteGroup(id) {
-        return apiClient.delete(`/grupe/${id}`);
+        return axios.delete(`${API_BASE_URL}/grupe/${id}`);
     },
 
-    //ČLANCI -> ne korsiti se trenutno!!!!
+    //ČLANCI -> ne koristiti se trenutno!!!!
 
     getAllArticles() {
-        return apiClient.get("/clanci");
+        return axios.get(`${API_BASE_URL}/clanci`);
     },
 
     getArticleById(id) {
-        return apiClient.get(`/clanci/${id}`);
+        return axios.get(`${API_BASE_URL}/clanci/${id}`);
     },
 
     getArticlesByFeedId(feedId) {
-        return apiClient.get(`/clanci/feedId/${feedId}`);
+        return axios.get(`${API_BASE_URL}/clanci/feedId/${feedId}`);
     },
 
     getUnreadAricles() {
-        return apiClient.get("clanci/proctian/false");
+        return axios.get(`${API_BASE_URL}/clanci/proctian/false`);
     },
 
     createArticle(data) {
-        return apiClient.post("/clanci", data);
+        return axios.post(`${API_BASE_URL}/clanci`, data);
     },
 
     updateArticle(id, data) {
-        return apiClient.put(`/clanci/${id}`, data);
+        return axios.put(`${API_BASE_URL}/clanci/${id}`, data);
     },
     
     setArticleReadStatus(id, procitano) {
-        return apiClient.patch(`/clanci/${id}/procitano`, { procitano });
+        return axios.patch(`${API_BASE_URL}/clanci/${id}/procitano`, { procitano });
     },
     
     deleteArticle(id) {
-        return apiClient.delete(`/clanci/${id}`);
+        return axios.delete(`${API_BASE_URL}/clanci/${id}`);
     },
-
-    //inicjalizacijski endpointovi nisu tu jer iste samo sendam preko postmana.
 }
