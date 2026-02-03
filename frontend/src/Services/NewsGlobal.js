@@ -16,9 +16,14 @@ const CORS_PROXIES = [
 
 let currentProxyIndex = 0;
 
-const getProxyUrl = (feedUrl) => {
+const getProxyUrl = (feedUrl, addCacheBust = false) => {
   const proxy = CORS_PROXIES[currentProxyIndex];
-  return `${proxy}${encodeURIComponent(feedUrl)}`;
+  let urlToFetch = feedUrl;
+  if (addCacheBust) {
+    const separator = feedUrl.includes('?') ? '&' : '?';
+    urlToFetch = `${feedUrl}${separator}_cb=${Date.now()}`;
+  }
+  return `${proxy}${encodeURIComponent(urlToFetch)}`;
 };
 
 const rotateProxy = () => {
@@ -201,35 +206,33 @@ const parseRSSFeed = (xmlText, feed) => {
   }
 };
 
-async function fetchRSSFeed(feed, retries = 3) {
-  const API_URL = 'http://localhost:3005';
-  
+async function fetchRSSFeed(feedUrl, feedName, retries = 3, forceRefresh = false) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`REFRESH[${feed.domain}] Pokušaj ${attempt}/${retries}`);
+      const proxyUrl = getProxyUrl(feedUrl, forceRefresh);
       
-      const response = await axios.get(`${API_URL}/rss/parse/${feed.id}`);
+      const response = await fetch(proxyUrl, {
+        headers: { 'Accept': 'application/rss+xml, application/xml, text/xml, */*' }
+      });
       
-      if (response.data && response.data.articles) {
-        console.log(`${feed.naziv}: ${response.data.articles.length} članaka`);
-        return response.data.articles;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
       
-      throw new Error('Nema članaka');
+      const xmlText = await response.text();
+      return xmlText;
       
     } catch (error) {
-      console.warn(` ${feed.domain} pokušaj ${attempt}/${retries}:`, error.message);
+      console.warn(`${feedName} pokušaj ${attempt}/${retries}:`, error.message);
       
-      if (attempt === retries) {
-        console.error(`Greška pri dohvatu ${feed.naziv}:`, error);
-        return [];
+      if (attempt < retries) {
+        rotateProxy();
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
   }
   
-  return [];
+  return null;
 }
 
 
@@ -289,7 +292,9 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
   console.log(`Fetch vijesti${forceRefresh ? ' (FORCE REFRESH)' : ''}...`);
   try {
     const feedsStore = useFeedsStore();
-    feedsStore.loadFromLocalStorage();
+    if (feedsStore.availableFeeds.length === 0) {
+      await feedsStore.initializeStore();
+    }
     
     let feedsToFetch;
     if (categoryId === 'all' || !categoryId) {
@@ -312,6 +317,10 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
     const fetchSingleFeed = async (feed) => {
       try {
         const xmlText = await fetchRSSFeed(feed.url, feed.name, 3, forceRefresh);
+        if (!xmlText) {
+          console.warn(`Nema XML odgovora za ${feed.name}`);
+          return;
+        }
         const items = parseRSSFeed(xmlText, feed);
         
         if (items.length > 0) {

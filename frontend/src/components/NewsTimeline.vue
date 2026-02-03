@@ -101,7 +101,7 @@ const refreshNews = async () => {
     return;
   }
   try {
-    feedsStore.loadFromLocalStorage();
+    //feedsStore.loadFromLocalStorage();
     const categoryId = feedsStore.selectedCategoryId;
     console.log('🔄 Refresham vijesti za kategoriju:', categoryId);
     const fetchedNews = await newsService.refreshNews(categoryId);
@@ -221,7 +221,7 @@ const setSortOldest = async () => {
 
 onMounted(async () => {
   loadPreferences()
-  feedsStore.loadFromLocalStorage()
+  await feedsStore.initializeStore()
   await refreshNews()
 
   setTimeout(() => {
