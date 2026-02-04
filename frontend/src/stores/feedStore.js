@@ -473,11 +473,40 @@ const refreshStore = async () => {
       isLoading.value = false;
     }
   };
+
+  //inicjalno za nove usere 
+
+  const needsInitialSetup = computed(() => {
+    return availableFeeds.value.length === 0;
+  });
+
+  const setupInitialData = async () => {
+    isLoading.value = true;
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      };
+
+      await fetch('http://localhost:3005/pocetnoStanjeFeed', { method: 'POST', headers });
+      await fetch('http://localhost:3005/pocetnoGrupe', { method: 'POST', headers });
+      
+      await initializeStore();
+      return true;
+    } catch (error) {
+      console.error("Greška pri postavljanju početnih podataka:", error);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  };
   
 
   return {
     categories,
     selectedCategoryId,
+    needsInitialSetup,
     availableFeeds,
     isLoading,
     selectedCategory,
@@ -490,13 +519,14 @@ const refreshStore = async () => {
     selectCategory,
     addCustomFeed,
     removeCustomFeed,
-    loadFromLocalStorage, // možeš zadržati za kompatibilnost
-    saveToLocalStorage, // možeš zadržati za kompatibilnost
+    loadFromLocalStorage, // legacy
+    saveToLocalStorage, //legacy
     exportData,
     importData,
     loadFeedsFromBackend,
-    loadCategoriesFromBackend, // NOVO
+    loadCategoriesFromBackend, 
     initializeStore,
-    refreshStore// NOVO - koristiti pri pokretanju app-a
+    refreshStore,
+    setupInitialData
   };  
 });

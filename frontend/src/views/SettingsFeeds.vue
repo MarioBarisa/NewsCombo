@@ -175,303 +175,308 @@ import AISpotlightSettings from '../components/AISpotlightSettings.vue';
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-8 max-w-6xl">
-    <h1 class="text-4xl font-bold mb-2">Postavke Feedova</h1>
-    <p class="text-lg opacity-70 mb-8">Kreirajte i upravljajte svojim kategorijama vijesti</p>
-
-    <!-- Sekcija za Custom RSS Feedove -->
-    <div class="mb-8">
-      <div class="flex justify-between items-center mb-4">
-        <div>
-          <h2 class="text-2xl font-semibold">Custom RSS Feedovi</h2>
-          <p class="text-sm opacity-70 mt-1">Dodajte svoje prilagođene RSS izvore</p>
+  <div class="min-h-screen bg-base-200 py-8 px-4">
+    <div class="max-w-4xl mx-auto space-y-6">
+      
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
+          </svg>
         </div>
-        <button v-if="!showCustomFeedForm" @click="startAddingCustomFeed" class="btn btn-secondary">
-          + Dodaj Custom Feed
-        </button>
+        <h1 class="text-3xl font-bold">Postavke Feedova</h1>
+        <p class="text-base-content/60 mt-2">Upravljaj RSS izvorima i kategorijama vijesti</p>
       </div>
-      <!-- Forma za dodavanje custom feeda -->
-      <div v-if="showCustomFeedForm" class="card bg-base-200 shadow mb-4">
+
+      <!-- Statistika -->
+      <div class="stats stats-vertical sm:stats-horizontal shadow w-full bg-base-100">
+        <div class="stat">
+          <div class="stat-figure text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
+            </svg>
+          </div>
+          <div class="stat-title">Ukupno feedova</div>
+          <div class="stat-value text-primary">{{ feedsStore.availableFeeds.length }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-figure text-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+          </div>
+          <div class="stat-title">Kategorija</div>
+          <div class="stat-value text-secondary">{{ feedsStore.categories.length }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-figure text-accent">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </div>
+          <div class="stat-title">Custom feedova</div>
+          <div class="stat-value text-accent">{{ feedsStore.customFeeds.length }}</div>
+        </div>
+      </div>
+
+      <!-- Custom RSS Feedovi -->
+      <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-          <h3 class="card-title mb-4">Dodaj Custom RSS Feed</h3>
-
-          <div class="form-control mb-4">
-            <label class="label">
-              <span class="label-text">Naziv izvora</span>
-            </label>
-            <input v-model="customFeedName" type="text" placeholder="npr. Moj Blog" class="input input-bordered"
-              maxlength="50" />
-            <label class="label">
-              <span class="label-text-alt">{{ customFeedName.length }}/50</span>
-            </label>
-          </div>
-
-          <!-- RSS URL input sa gumbom za provjeru -->
-          <div class="form-control mb-4">
-            <label class="label">
-              <span class="label-text">RSS URL</span>
-            </label>
-            <div class="join w-full">
-              <input v-model="customFeedUrl" @input="onUrlChange" type="url" placeholder="https://example.com/feed"
-                class="input input-bordered join-item flex-1" />
-              <button @click="checkRssValidity" :disabled="!customFeedUrl.trim() || isCheckingRss"
-                class=" ml-2 btn join-item" :class="{
-                  'btn-success': rssCheckStatus === 'valid',
-                  'btn-error': rssCheckStatus === 'invalid',
-                  'btn-neutral': !rssCheckStatus
-                }">
-                <span v-if="isCheckingRss" class="loading loading-spinner loading-sm"></span>
-                <span v-else>{{ rssCheckStatus ? '✓' : 'Provjeri' }}</span>
-              </button>
-            </div>
-
-            <!-- Status msg -->
-            <label class="label" v-if="rssCheckMessage">
-              <span class="label-text-alt" :class="{
-                'text-success': rssCheckStatus === 'valid',
-                'text-error': rssCheckStatus === 'invalid'
-              }">
-                {{ rssCheckMessage }}
-              </span>
-            </label>
-            <label class="label" v-else>
-              <span class="label-text-alt">Unesite pun URL RSS feeda</span>
-            </label>
-          </div>
-
-          <div class="form-control mb-4">
-            <label class="label">
-              <span class="label-text">Kategorija</span>
-            </label>
-            <select v-model="customFeedCategory" class="select select-bordered">
-              <option value="custom">Custom</option>
-              <option value="hrvatska">Hrvatska</option>
-              <option value="world">Svijet</option>
-              <option value="tech">Tehnologija</option>
-              <option value="science">Znanost</option>
-              <option value="business">Posao</option>
-            </select>
-          </div>
-
-          <div class="card-actions justify-end gap-2">
-            <button @click="cancelAddingCustomFeed" class="btn btn-ghost">
-              Otkaži
-            </button>
-            <button @click="confirmAddCustomFeed" :disabled="!customFeedName.trim() || !customFeedUrl.trim()"
-              class="btn btn-secondary">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="card-title flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Custom RSS Feedovi
+            </h3>
+            <button v-if="!showCustomFeedForm" @click="startAddingCustomFeed" class="btn btn-secondary btn-sm gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
               Dodaj Feed
             </button>
           </div>
-        </div>
-      </div>
 
-
-
-      <!-- Lista custom feedova -->
-      <div v-if="feedsStore.customFeeds.length > 0" class="grid gap-2">
-        <div v-for="feed in feedsStore.customFeeds" :key="feed.id" class="card bg-base-100 shadow-sm">
-          <div class="card-body py-3 px-4">
-            <div class="flex justify-between items-center">
-              <div>
-                <h4 class="font-semibold">{{ feed.name }}</h4>
-                <p class="text-xs opacity-60">{{ feed.url }}</p>
-                <span class="badge badge-sm badge-outline mt-1">{{ feed.category }}</span>
+          <!-- Forma za dodavanje -->
+          <div v-if="showCustomFeedForm" class="bg-base-200 rounded-xl p-4 mb-4">
+            <div class="grid gap-4">
+              <div class="form-control">
+                <label class="label"><span class="label-text font-medium">Naziv izvora</span></label>
+                <input v-model="customFeedName" type="text" placeholder="npr. Moj Blog" class="input input-bordered" maxlength="50" />
+                <label class="label"><span class="label-text-alt">{{ customFeedName.length }}/50</span></label>
               </div>
-              <button @click="confirmDeleteCustomFeed(feed.id)" class="btn btn-sm btn-error btn-outline">
-                Obriši
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div v-else-if="!showCustomFeedForm" class="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span>Još nemate dodanih custom RSS feedova. Kliknite "Dodaj Custom Feed" za početak!</span>
-      </div>
-    </div>
-
-    <!-- Standardna kategorija (samo prikaz) -->
-    <div class="mb-8">
-      <h2 class="text-2xl font-semibold mb-4">Obavezna Kategorija</h2>
-      <div class="card bg-base-200 shadow">
-        <div class="card-body">
-          <div class="flex justify-between items-center">
-            <div>
-              <h3 class="card-title">{{ feedsStore.categories[0].name }}</h3>
-              <p class="text-sm opacity-75">{{ feedsStore.categories[0].description }}</p>
-              <p class="text-xs opacity-50 mt-2">
-                Sadrži sve dostupne feedove ({{ feedsStore.availableFeeds.length }} izvora)
-              </p>
-            </div>
-            <div class="badge badge-primary">Default</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- prilagođene kategorije -->
-    <div class="mb-8">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-2xl font-semibold">Vaše Kategorije</h2>
-        <button v-if="!showAddForm" @click="startAddingCategory" :disabled="feedsStore.availableFeeds.length === 0"
-          class="btn btn-primary" title="Kreirajte novu kategoriju kombinirajući različite RSS feedove">
-          + Nova Kategorija
-        </button>
-      </div>
-
-      <!-- dodavanje nove kategorije -->
-      <div v-if="showAddForm" class="card bg-base-200 shadow mb-4">
-        <div class="card-body">
-          <h3 class="card-title mb-4">Kreiraj Novu Kategoriju</h3>
-          <div class="form-control mb-4">
-            <label class="label">
-              <span class="label-text">Ime Kategorije</span>
-            </label>
-            <input v-model="newCategoryName" type="text" placeholder="npr. Tehnologija i AI"
-              class="input input-bordered" maxlength="50" />
-            <label class="label">
-              <span class="label-text-alt">{{ newCategoryName.length }}/50</span>
-            </label>
-          </div>
-
-          <!-- odabir news -->
-          <div class="mb-4">
-            <label class="label">
-              <span class="label-text">Odaberite Feedove</span>
-            </label>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div v-for="(feeds, domain) in allFeedsByDomain" :key="domain">
-                <h4 class="font-semibold text-sm mb-3 text-primary">{{ domain }}</h4>
-                <div class="flex flex-col gap-2">
-                  <label v-for="feed in feeds" :key="feed.id"
-                    class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-base-100">
-                    <input type="checkbox" :value="feed.id" v-model="selectedFeedsForNew"
-                      class="checkbox checkbox-primary checkbox-sm" />
-                    <span class="text-sm">{{ feed.name }}</span>
-                  </label>
+              <div class="form-control">
+                <label class="label"><span class="label-text font-medium">RSS URL</span></label>
+                <div class="join w-full">
+                  <input v-model="customFeedUrl" @input="onUrlChange" type="url" placeholder="https://example.com/feed" class="input input-bordered join-item flex-1" />
+                  <button @click="checkRssValidity" :disabled="!customFeedUrl.trim() || isCheckingRss" class="btn join-item" :class="{
+                    'btn-success': rssCheckStatus === 'valid',
+                    'btn-error': rssCheckStatus === 'invalid',
+                    'btn-neutral': !rssCheckStatus
+                  }">
+                    <span v-if="isCheckingRss" class="loading loading-spinner loading-sm"></span>
+                    <span v-else>{{ rssCheckStatus === 'valid' ? '✓' : 'Provjeri' }}</span>
+                  </button>
                 </div>
+                <label class="label" v-if="rssCheckMessage">
+                  <span class="label-text-alt" :class="{ 'text-success': rssCheckStatus === 'valid', 'text-error': rssCheckStatus === 'invalid' }">
+                    {{ rssCheckMessage }}
+                  </span>
+                </label>
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text font-medium">Kategorija</span></label>
+                <select v-model="customFeedCategory" class="select select-bordered">
+                  <option value="custom">Custom</option>
+                  <option value="hrvatska">Hrvatska</option>
+                  <option value="world">Svijet</option>
+                  <option value="tech">Tehnologija</option>
+                  <option value="science">Znanost</option>
+                  <option value="business">Posao</option>
+                </select>
+              </div>
+
+              <div class="flex justify-end gap-2 pt-2">
+                <button @click="cancelAddingCustomFeed" class="btn btn-ghost">Otkaži</button>
+                <button @click="confirmAddCustomFeed" :disabled="!customFeedName.trim() || !customFeedUrl.trim()" class="btn btn-secondary">
+                  Dodaj Feed
+                </button>
               </div>
             </div>
           </div>
 
-          <div class="card-actions justify-end gap-2">
-            <button @click="cancelAddingCategory" class="btn btn-ghost">
-              Otkaži
-            </button>
-            <button @click="confirmAddCategory" :disabled="!newCategoryName.trim()" class="btn btn-primary">
-              Kreiraj
-            </button>
-
-          </div>
-        </div>
-      </div>
-
-      <div v-if="feedsStore.categories.length > 1" class="grid gap-4">
-        <div v-for="category in feedsStore.categories.slice(1)" :key="category.id" class="card bg-base-100 shadow">
-          <div class="card-body">
-            <div v-if="editingCategoryId !== category.id">
-              <div class="flex justify-between items-start mb-3">
+          <!-- LIST CUSTOM feedova -->
+          <div v-if="feedsStore.customFeeds.length > 0" class="space-y-2">
+            <div v-for="feed in feedsStore.customFeeds" :key="feed.id" class="flex items-center justify-between p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                  </svg>
+                </div>
                 <div>
-                  <h4 class="card-title">{{ category.name }}</h4>
-                  <p class="text-sm opacity-75">{{ category.feeds.length }} feedova</p>
-                </div>
-                <div class="flex gap-2">
-                  <button @click="startEditingCategory(category)" class="btn btn-sm btn-secondary">
-                    Uredi
-                  </button>
-                  <button @click="confirmDeleteCategory(category.id)" class="btn btn-sm btn-error">
-                    Obriši
-                  </button>
+                  <h4 class="font-semibold">{{ feed.name }}</h4>
+                  <p class="text-xs text-base-content/50 truncate max-w-xs">{{ feed.url }}</p>
                 </div>
               </div>
-              <div class="flex flex-wrap gap-2">
-                <span v-for="feed in category.feeds" :key="feed.id" class="badge badge-outline">
-                  {{ feed.name }}
-                </span>
+              <div class="flex items-center gap-2">
+                <span class="badge badge-outline badge-sm">{{ feed.category }}</span>
+                <button @click="confirmDeleteCustomFeed(feed.id)" class="btn btn-ghost btn-sm btn-square text-error">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             </div>
+          </div>
 
-            <div v-else>
-              <h4 class="card-title mb-4">Uredi Kategoriju</h4>
+          <div v-else-if="!showCustomFeedForm" class="text-center py-8 text-base-content/50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <p>Još nemaš custom feedova</p>
+            <p class="text-sm">Klikni "Dodaj Feed" za početak</p>
+          </div>
+        </div>
+      </div>
 
-              <div class="form-control mb-4">
-                <label class="label">
-                  <span class="label-text">Ime Kategorije</span>
-                </label>
-                <input v-model="editingCategoryName" type="text" class="input input-bordered" maxlength="50" />
-              </div>
+      <!-- DEF kategorija -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h3 class="card-title flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            Obavezna Kategorija
+          </h3>
+          <div class="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
+            <div>
+              <h4 class="font-semibold text-lg">{{ feedsStore.categories[0]?.name }}</h4>
+              <p class="text-sm text-base-content/60">{{ feedsStore.categories[0]?.description }}</p>
+              <p class="text-xs text-base-content/40 mt-1">Sadrži {{ feedsStore.availableFeeds.length }} izvora</p>
+            </div>
+            <div class="badge badge-primary badge-lg">Default</div>
+          </div>
+        </div>
+      </div>
 
-              <div class="mb-4">
-                <label class="label">
-                  <span class="label-text">Feedovi</span>
-                </label>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div v-for="(feeds, domain) in allFeedsByDomain" :key="domain">
-                    <h5 class="font-semibold text-xs mb-2 text-primary">{{ domain }}</h5>
-                    <div class="flex flex-col gap-1">
-                      <label v-for="feed in feeds" :key="feed.id"
-                        class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200 text-sm">
-                        <input type="checkbox" :value="feed.id" v-model="editingCategoryFeeds"
-                          class="checkbox checkbox-primary checkbox-sm" />
-                        <span>{{ feed.name }}</span>
-                      </label>
-                    </div>
+      <!-- KORISNIKOVE kategorije -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="card-title flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Tvoje custom Kategorije
+            </h3>
+            <button v-if="!showAddForm" @click="startAddingCategory" :disabled="feedsStore.availableFeeds.length === 0" class="btn btn-primary btn-sm gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Nova Kategorija
+            </button>
+          </div>
+
+          <!-- FORM za novu kategoriju -->
+          <div v-if="showAddForm" class="bg-base-200 rounded-xl p-4 mb-4">
+            <h4 class="font-semibold mb-4">Kreiraj Novu Kategoriju</h4>
+            <div class="form-control mb-4">
+              <label class="label"><span class="label-text font-medium">Ime Kategorije</span></label>
+              <input v-model="newCategoryName" type="text" placeholder="npr. Tehnologija i AI" class="ml-2 input input-bordered" maxlength="50" />
+              <label class="label"><span class="label-text-alt ml-2">{{ newCategoryName.length }}/50</span></label>
+            </div>
+
+            <div class="mb-4">
+              <label class="label"><span class="label-text font-medium">Odaberite Feedove</span></label>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-64 overflow-y-auto p-2 bg-base-100 rounded-lg">
+                <div v-for="(feeds, domain) in allFeedsByDomain" :key="domain">
+                  <h5 class="font-semibold text-xs mb-2 text-primary uppercase tracking-wide">{{ domain }}</h5>
+                  <div class="space-y-1">
+                    <label v-for="feed in feeds" :key="feed.id" class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-base-200 transition-colors">
+                      <input type="checkbox" :value="feed.id" v-model="selectedFeedsForNew" class="checkbox checkbox-primary checkbox-sm" />
+                      <span class="text-sm">{{ feed.name }}</span>
+                    </label>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="card-actions justify-end gap-2">
-                <button @click="cancelEditingCategory" class="btn btn-ghost btn-sm">
-                  Otkaži
-                </button>
-                <button @click="confirmEditCategory"
-                  :disabled="!editingCategoryName.trim() || editingCategoryFeeds.length === 0"
-                  class="btn btn-primary btn-sm">
-                  Spremi
-                </button>
+            <div class="flex justify-end gap-2">
+              <button @click="cancelAddingCategory" class="btn btn-ghost">Otkaži</button>
+              <button @click="confirmAddCategory" :disabled="!newCategoryName.trim()" class="btn btn-primary">Kreiraj</button>
+            </div>
+          </div>
+
+          <!-- LIST kategorija -->
+          <div v-if="feedsStore.categories.length > 1" class="space-y-3">
+            <div v-for="category in feedsStore.categories.slice(1)" :key="category.id" class="border border-base-300 rounded-xl overflow-hidden">
+              <div v-if="editingCategoryId !== category.id" class="p-4">
+                <div class="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 class="font-semibold text-lg">{{ category.name }}</h4>
+                    <p class="text-sm text-base-content/60">{{ category.feeds.length }} feedova</p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button @click="startEditingCategory(category)" class="btn btn-ghost btn-sm gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Uredi
+                    </button>
+                    <button @click="confirmDeleteCategory(category.id)" class="btn btn-ghost btn-sm text-error gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Obriši
+                    </button>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="feed in category.feeds" :key="feed.id" class="badge badge-outline">{{ feed.name }}</span>
+                </div>
+              </div>
+
+              <!-- Edit mode -->
+              <div v-else class="p-4 bg-base-200">
+                <h4 class="font-semibold mb-4">Uredi Kategoriju</h4>
+                <div class="form-control mb-4">
+                  <label class="label"><span class="label-text font-medium">Ime Kategorije</span></label>
+                  <input v-model="editingCategoryName" type="text" class="input input-bordered" maxlength="50" />
+                </div>
+
+                <div class="mb-4">
+                  <label class="label"><span class="label-text font-medium">Feedovi</span></label>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-48 overflow-y-auto p-2 bg-base-100 rounded-lg">
+                    <div v-for="(feeds, domain) in allFeedsByDomain" :key="domain">
+                      <h5 class="font-semibold text-xs mb-2 text-primary uppercase tracking-wide">{{ domain }}</h5>
+                      <div class="space-y-1">
+                        <label v-for="feed in feeds" :key="feed.id" class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-base-200 text-sm">
+                          <input type="checkbox" :value="feed.id" v-model="editingCategoryFeeds" class="checkbox checkbox-primary checkbox-sm" />
+                          <span>{{ feed.name }}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex justify-end gap-2">
+                  <button @click="cancelEditingCategory" class="btn btn-ghost btn-sm">Otkaži</button>
+                  <button @click="confirmEditCategory" :disabled="!editingCategoryName.trim() || editingCategoryFeeds.length === 0" class="btn btn-primary btn-sm">Spremi</button>
+                </div>
               </div>
             </div>
           </div>
+          
+
+          <div v-else-if="!showAddForm" class="text-center py-8 text-base-content/50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            <p>Još nemate custom kategorija</p>
+            <p class="text-sm">Kombinirajte feedove u vlastite kategorije</p>
+          </div>
+        </div>
+      </div>
+            <!-- Tip -> možda maknut jer previše?? -->
+            <div class="alert shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <div>
+          <h4 class="font-semibold">Savjet</h4>
+          <p class="text-sm">Kreirajte kategorije prema interesima, zatim ih odaberite u glavnom izborniku za filtrirane vijesti.</p>
         </div>
       </div>
 
+      <AISpotlightSettings />
 
-
-      <div v-else-if="!showAddForm" class="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span>Trebate nekoliko sekundi da kreirate prvu kategoriju!</span>
-      </div>
-
-      <AISpotlightSettings></AISpotlightSettings>
-    </div>
-    <div class="alert alert-info">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-      </svg>
-      <span>💡 Savjet: Kreirajte kategorije prema vašim interesima, zatim odaberite ih u meniju za učitavanje vijesti iz
-        odabranih feedova.</span>
     </div>
   </div>
 </template>
 
 <style>
-@media (max-width: 375px) {
-  .alert {
-    padding: 0.5rem;
-    font-size: 0.875rem;
-  }
-
-  .alert svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-}
 </style>
