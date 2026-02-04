@@ -57,6 +57,65 @@ export default function createAuthRoutes(db) {
     }
   });
 
+  // ažuriranje profila (ime, email, lozinka)
+  router.put('/auth/profile', async (req, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (!token) return res.status(401).json({ error: 'Nije autoriziran' });
+
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const { name, email, currentPassword, newPassword } = req.body;
+      
+      const user = await users.findOne({ email: decoded.email });
+      if (!user) return res.status(404).json({ error: 'Korisnik nije pronađen' });
+
+      const updates = {};
+
+      if (name && name !== user.name) {
+        updates.name = name;
+      }
+
+      if (email && email !== user.email) {
+        const existing = await users.findOne({ email });
+        if (existing) return res.status(400).json({ error: 'Email već postoji' });
+        updates.email = email;
+      }
+
+      if (newPassword) {
+        if (!currentPassword) {
+          return res.status(400).json({ error: 'Trenutna lozinka je obavezna' });
+        }
+        const validPassword = await bcrypt.compare(currentPassword, user.password);
+        if (!validPassword) {
+          return res.status(400).json({ error: 'Pogrešna trenutna lozinka' });
+        }
+        updates.password = await bcrypt.hash(newPassword, 10);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: 'Nema promjena za spremiti' });
+      }
+
+      await users.updateOne({ email: decoded.email }, { $set: updates });
+
+      // Ako se email change-ao, vrati novi token
+      const newEmail = updates.email || decoded.email;
+      const newToken = updates.email 
+        ? jwt.sign({ userId: user._id, email: newEmail }, JWT_SECRET, { expiresIn: '7d' })
+        : null;
+
+      const updatedUser = await users.findOne({ email: newEmail }, { projection: { password: 0 } });
+      
+      res.json({ 
+        user: updatedUser, 
+        token: newToken,
+        message: 'Profil uspješno ažuriran' 
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   router.post('/auth/profile-picture', async (req, res) => {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '');
