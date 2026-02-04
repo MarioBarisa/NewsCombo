@@ -31,7 +31,7 @@
           <RouterLink to="/settings" class="justify-between"> Postavke </RouterLink>
         </li>
 
-        <li><a>Logout</a></li>
+        <li><a @click="handleLogout">Logout</a></li>
       </ul>
     </div>
   </div>
@@ -40,6 +40,13 @@
 <script setup>
 import { useAuthStore } from '../stores/authStore';
 const authStore = useAuthStore();
+import { useRouter } from 'vue-router';
+const router = useRouter();
+
+function handleLogout() {
+  authStore.logout();
+  router.push('/landing');
+}
 </script>
 
 <style>
