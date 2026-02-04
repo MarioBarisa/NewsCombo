@@ -52,8 +52,11 @@
   const loading = ref(true);
   
   const fetchBookmarks = async () => {
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:3005/bookmarks');
+      const res = await fetch('http://localhost:3005/bookmarks', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         bookmarks.value = await res.json();
       }
@@ -65,12 +68,16 @@
   };
   
   const removeBookmark = async (url) => {
-    if(!confirm("Obrisati ovaj članak?")) return;
+    if (!confirm("Obrisati ovaj članak?")) return;
+    const token = localStorage.getItem('token');
     
     try {
       await fetch('http://localhost:3005/bookmarks', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ originalUrl: url })
       });
       bookmarks.value = bookmarks.value.filter(b => b.originalUrl !== url);

@@ -77,11 +77,15 @@ onMounted(() => {
 const toggleBookmark = async () => {
   const url = 'http://localhost:3005/bookmarks';
   const method = isBookmarked.value ? 'DELETE' : 'POST';
+  const token = localStorage.getItem('token');
 
   try {
     const response = await fetch(url, {
       method: method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
         title: props.news.title,
         originalUrl: props.news.link,

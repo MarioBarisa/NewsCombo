@@ -112,13 +112,15 @@ const checkRssValidity = async () => {
   isCheckingRss.value = true;
   rssCheckStatus.value = null;
   rssCheckMessage.value = '';
-
+  const token = localStorage.getItem('token');
   try {
     // provjera URL formata ( nije toliko bitno )
     new URL(customFeedUrl.value);
 
     // poziv na backend za provjeru RSS-a
-    const response = await fetch(`http://localhost:3005/rss/validate?url=${encodeURIComponent(customFeedUrl.value)}`);
+    const response = await fetch(`http://localhost:3005/rss/validate?url=${encodeURIComponent(customFeedUrl.value)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     const data = await response.json();
 
     if (response.ok && data.valid) {
