@@ -288,30 +288,49 @@ import AISpotlightSettings from '../components/AISpotlightSettings.vue';
             </div>
           </div>
 
-          <!-- LIST CUSTOM feedova -->
-          <div v-if="feedsStore.customFeeds.length > 0" class="space-y-2">
-            <div v-for="feed in feedsStore.customFeeds" :key="feed.id" class="flex items-center justify-between p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
+          <!-- LIST CUSTOM feedova (Dropdown) -->
+          <div v-if="feedsStore.customFeeds.length > 0" class="collapse collapse-arrow bg-base-200 mt-4 rounded-xl border border-base-300">
+            <input type="checkbox" /> 
+            
+            <!-- Naslov Dropdowna -->
+            <div class="collapse-title flex items-center gap-3 font-medium">
+              <div class="indicator">
+                <span class="indicator-item badge badge-secondary badge-xs"></span> 
+                <div class="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                </div>
-                <div>
-                  <h4 class="font-semibold">{{ feed.name }}</h4>
-                  <p class="text-xs text-base-content/50 truncate max-w-xs">{{ feed.url }}</p>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="badge badge-outline badge-sm">{{ feed.category }}</span>
-                <button @click="confirmDeleteCustomFeed(feed.id)" class="btn btn-ghost btn-sm btn-square text-error">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+              <span>Moji Feedovi ({{ feedsStore.customFeeds.length }})</span>
+            </div>
+
+            <!-- Sadržaj Dropdowna -->
+            <div class="collapse-content">
+              <div class="space-y-2 pt-2">
+                <div v-for="feed in feedsStore.customFeeds" :key="feed.id" class="flex items-center justify-between p-3 bg-base-100 rounded-lg border border-base-200 hover:border-secondary/30 transition-colors">
+                  
+                  <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="min-w-0">
+                      <h4 class="font-semibold text-sm truncate">{{ feed.name }}</h4>
+                      <p class="text-xs text-base-content/50 truncate max-w-[150px] sm:max-w-xs">{{ feed.url }}</p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="badge badge-ghost badge-sm hidden sm:inline-flex">{{ feed.category }}</span>
+                    <button @click.stop="confirmDeleteCustomFeed(feed.id)" class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+
+                </div>
               </div>
             </div>
           </div>
+
 
           <div v-else-if="!showCustomFeedForm" class="text-center py-8 text-base-content/50">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
