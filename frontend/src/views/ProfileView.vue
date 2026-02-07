@@ -118,6 +118,58 @@
         </button>
       </div>
 
+          <!-- DANGER ZONE -->
+    <div class="card bg-base-100 shadow-xl border-2 border-error/20 mt-8">
+      <div class="card-body">
+        <h2 class="card-title text-error flex gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Brisanje računa
+        </h2>
+        <p class="text-base-content/70">Ova radnja je nepovratna. Brisanje računa trajno uklanja sve tvoje podatke.</p>
+        <div class="card-actions justify-end mt-4">
+          <button onclick="delete_account_modal.showModal()" class="btn btn-error btn-outline">
+            Obriši račun
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL ZA POTVRDU BRISANJA -->
+    <dialog id="delete_account_modal" class="modal">
+      <div class="modal-box border-2 border-error">
+        <h3 class="font-bold text-lg text-error">Jeste li apsolutno sigurni?</h3>
+        <p class="py-4">Ova radnja će <b>trajno obrisati</b> vaš korisnički račun i sve povezane podatke. Ovo se ne može poništiti.</p>
+        
+        <p class="text-sm mb-2">Upišite <span class="font-mono font-bold bg-base-200 px-1 rounded">DELETE</span> za potvrdu:</p>
+        <input 
+          v-model="deleteConfirmationInput" 
+          type="text" 
+          placeholder="DELETE" 
+          class="input input-bordered input-error w-full mb-4" 
+        />
+
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn btn-ghost mr-2">Odustani</button>
+          </form>
+          <button 
+            @click="handleDeleteAccount" 
+            :disabled="deleteConfirmationInput !== 'DELETE' || isDeleting"
+            class="btn btn-error"
+          >
+            <span v-if="isDeleting" class="loading loading-spinner"></span>
+            <span v-else>Potvrdi brisanje</span>
+          </button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+
+
     </div>
   </div>
 </template>
@@ -231,6 +283,43 @@ async function uploadImage(event) {
   reader.readAsDataURL(file);
 }
 
+
+const deleteConfirmationInput = ref('');
+const isDeleting = ref(false);
+
+const handleDeleteAccount = async () => {
+  if (deleteConfirmationInput.value !== 'DELETE') return;
+  
+  isDeleting.value = true;
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:3005/api/auth/delete-account', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      // briši sve od usera
+      authStore.logout(); 
+      localStorage.clear();
+      
+      
+      document.getElementById('delete_account_modal').close();
+      
+      router.push('/landing');
+    } else {
+      alert('Došlo je do greške pri brisanju računa.');
+    }
+  } catch (error) {
+    console.error('Greška:', error);
+    alert('Greška na serveru.');
+  } finally {
+    isDeleting.value = false;
+  }
+};
 
 
 function handleLogout() {

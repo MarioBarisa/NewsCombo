@@ -159,6 +159,37 @@ export default function createAuthRoutes(db) {
     }
   });
 
+    // DELETE /auth/delete-account - trajno brisanje računa
+    router.delete('/auth/delete-account', async (req, res) => {
+      try {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+        if (!token) return res.status(401).json({ error: 'Nije autoriziran' });
+  
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userId = decoded.userId; // ID iz tokena
+        const userEmail = decoded.email;
+  
+        // brisannje svih korisnikovih podataka iz ostalih kolekcija
+        await db.collection('rss_feedovi').deleteMany({ userId: userId }); //same vijesti
+        await db.collection('grupe').deleteMany({ userId: userId });    //custom grupe
+        await db.collection('sacuvani_clanci').deleteMany({ userId: userId }); //bookmarks 
+        await db.collection('ai_summaries').deleteMany({ userId: userId });  //brisanje generiranih ai sažetaka korisnika
+        await db.collection('ai_grupa').deleteMany({ userId: userId }); //brisanje ai grupe korisnika
+
+        // brisanje samog korisnika
+        const result = await users.deleteOne({ email: userEmail });
+  
+        if (result.deletedCount === 0) {
+          return res.status(404).json({ error: 'Korisnik nije pronađen' });
+        }
+  
+        res.json({ message: 'Račun i svi podaci su trajno obrisani.' });
+      } catch (error) {
+        console.error('Greška pri brisanju računa:', error);
+        res.status(500).json({ error: 'Greška pri brisanju računa' });
+      }
+    });
+  
 
   return router;
 }
