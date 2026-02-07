@@ -375,5 +375,21 @@ Grupiraj vijesti po kategorijama (max 3). Budi koncizan. Odgovori SAMO JSON-om, 
     }
   }
 
+    // Brisanje svih AI sažetaka odjednom
+    router.delete("/ai-grupa/summaries", async (req, res) => {
+      try {
+        const summaryCollection = db.collection("ai_summaries");
+        const result = await summaryCollection.deleteMany({ userId: req.user.userId });
+        
+        res.status(200).json({ 
+          poruka: "Svi sažeci obrisani", 
+          deletedCount: result.deletedCount 
+        });
+      } catch (error) {
+        res.status(500).json({ error: "Greška", details: error.message });
+      }
+    });
+  
+
   return router;
 }

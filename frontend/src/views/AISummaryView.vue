@@ -65,15 +65,15 @@ async function loadGenerationStatus() {
 
 async function generateSummary() {
   if (!canGenerate.value || isGenerating.value) return;
-  
+
   isGenerating.value = true;
   try {
     const response = await axios.post(`${API_URL}/ai-grupa/summary/generate`);
     console.log('Sažetak generiran:', response.data);
-    
+
     await loadSummaries();
     await loadGenerationStatus();
-    
+
     showToast('AI sažetak uspješno generiran', 'success');
   } catch (error) {
     console.error('Greška pri generiranju:', error);
@@ -85,7 +85,7 @@ async function generateSummary() {
 
 async function deleteSummary(id) {
   if (!confirm('Želiš obrisati ovaj sažetak?')) return;
-  
+
   try {
     await axios.delete(`${API_URL}/ai-grupa/summaries/${id}`);
     await loadSummaries();
@@ -127,12 +127,24 @@ onMounted(async () => {
     loadGenerationStatus()
   ]);
   isLoading.value = false;
-  
+
   setInterval(() => {
     loadGenerationStatus();
     loadSummaries();
   }, 60000);
 });
+
+async function deleteAllSummaries() {
+  try {
+    await axios.delete(`${API_URL}/ai-grupa/summaries`);
+    await loadSummaries();
+    showToast('Svi sažeci uspješno obrisani', 'success');
+  } catch (error) {
+    console.error('Greška pri brisanju svih sažetaka:', error);
+    showToast('Greška pri brisanju sažetaka', 'error');
+  }
+}
+
 </script>
 
 <template>
@@ -144,8 +156,10 @@ onMounted(async () => {
     <div v-else>
       <div v-if="!hasFeedsInGroup" class="text-center py-16">
         <div class="alert alert-warning max-w-2xl mx-auto mb-8">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
             <h3 class="font-bold">Nemaš dodanih feedova u AI grupu</h3>
@@ -155,8 +169,10 @@ onMounted(async () => {
 
         <button @click="goToSettings" class="btn btn-primary btn-lg">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           Idi na Postavke
         </button>
@@ -173,29 +189,22 @@ onMounted(async () => {
                   <p class="text-sm opacity-90">
                     {{ aiGroup.feedIds?.length || 0 }} RSS feedova
                   </p>
-                  <hr></hr>
-                  <p class="text-sm opacity-90">Ai može biti u krivu. </p>
-                  <p>Uvijek sam <b>provjeri tvrdnje!</b>  </p>  
-                  <p> Korištenjem AI funkcije slažeš se sa Google Gemini Privacy Policy i ToS.</p>
+                  <hr class="my-2 opacity-30">
+                  <p class="text-xs opacity-80">AI može pogriješiti. Uvijek provjeri izvore.</p>
+                  <p class="text-xs opacity-80 mt-1">Korištenjem ove funkcije prihvaćaš Google Gemini Uvjete korištenja.</p>
                 </div>
               </div>
 
               <div class="flex gap-2">
-                <button 
-                  @click="loadSummaries" 
-                  class="btn btn-neutral btn-sm"
-                  :disabled="isGenerating"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <button @click="loadSummaries" class="btn btn-neutral btn-sm" :disabled="isGenerating">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
-                
-                <button 
-                  @click="generateSummary" 
-                  :disabled="!canGenerate || isGenerating"
-                  class="btn btn-neutral"
-                >
+
+                <button @click="generateSummary" :disabled="!canGenerate || isGenerating" class="btn btn-neutral">
                   <span v-if="isGenerating" class="loading loading-spinner loading-sm"></span>
                   <span v-else>Generiraj Sažetak</span>
                 </button>
@@ -204,8 +213,20 @@ onMounted(async () => {
           </div>
         </div>
 
+        <!-- LISTA SAŽETAKA -->
         <div v-if="summaries.length > 0">
           
+          <!-- HEADER SA GUMBOM ZA BRISANJE SVEGA -->
+          <div class="flex justify-between items-center mb-6 px-1">
+            <h2 class="text-xl font-bold opacity-70">Tvoji sažeci</h2>
+            <button onclick="delete_all_summaries_view_modal.showModal()" class="btn btn-sm btn-ghost text-error hover:bg-error/10 gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Obriši povijest
+            </button>
+          </div>
+
           <div class="space-y-6">
             <div 
               v-for="summary in summaries" 
@@ -221,33 +242,27 @@ onMounted(async () => {
                 </div>
 
                 <div class="space-y-6">
-                  <div 
-                    v-for="(section, idx) in summary.summary.sections" 
-                    :key="idx"
-                    class="border-l-4 border-primary pl-4 hover:bg-base-200 p-4 rounded-r-lg transition-colors"
-                  >
+                  <div v-for="(section, idx) in summary.summary.sections" :key="idx"
+                    class="border-l-4 border-primary pl-4 hover:bg-base-200 p-4 rounded-r-lg transition-colors">
                     <h4 class="font-bold text-primary mb-2 text-lg flex items-center gap-2">
                       <span class="badge badge-primary badge-sm">{{ idx + 1 }}</span>
                       {{ section.category }}
                     </h4>
                     <p class="text-base opacity-90 mb-4 leading-relaxed">{{ section.summary }}</p>
-                    
+
                     <div class="space-y-2">
                       <p class="text-sm font-semibold opacity-70 mb-2">Povezani članci:</p>
-                      <a 
-                        v-for="(article, i) in section.topArticles" 
-                        :key="i"
-                        :href="article.link"
-                        target="_blank"
-                        class="flex items-start gap-2 text-sm link link-hover p-2 hover:bg-base-300 rounded transition-colors"
-                      >
+                      <a v-for="(article, i) in section.topArticles" :key="i" :href="article.link" target="_blank"
+                        class="flex items-start gap-2 text-sm link link-hover p-2 hover:bg-base-300 rounded transition-colors">
                         <span class="badge badge-sm badge-outline flex-shrink-0">{{ i + 1 }}</span>
                         <span class="flex-1">
                           {{ article.title }}
                           <span class="opacity-50 text-xs ml-1">({{ article.source }})</span>
                         </span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none"
+                          viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                       </a>
                     </div>
@@ -260,12 +275,11 @@ onMounted(async () => {
                     <div class="badge badge-outline">#{{ summary.generationNumber }}</div>
                     <div class="badge badge-outline">{{ summary.feedsSources?.length || 0 }} izvora</div>
                   </div>
-                  <button 
-                    @click="deleteSummary(summary._id)" 
-                    class="btn btn-sm btn-error btn-outline"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <button @click="deleteSummary(summary._id)" class="btn btn-sm btn-error btn-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                     Obriši
                   </button>
@@ -276,16 +290,36 @@ onMounted(async () => {
         </div>
 
         <div v-else class="text-center py-16">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 mx-auto mb-4 text-base-content opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 mx-auto mb-4 text-base-content opacity-20"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
           <p class="text-xl opacity-60 mb-4">Još nemaš generiranih AI sažetaka</p>
           <p class="text-sm opacity-50 mb-6">Klikni "Generiraj Sažetak" kako bi AI analizirao tvoje feedove</p>
         </div>
       </div>
     </div>
+
+    <!-- MODAL -->
+    <dialog id="delete_all_summaries_view_modal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg text-error">Obriši sve generirane Ai sažetke?</h3>
+        <p class="py-4">Jesi li siguran da želiš trajno obrisati sve generirane AI sažetke? Ovu radnju nije moguće poništiti.</p>
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn btn-ghost">Odustani</button>
+            <button @click="deleteAllSummaries" class="btn btn-error ml-2">Obriši sve</button>
+          </form>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+
   </div>
-</template>
+</template>>
 
 <style scoped>
 .bg-gradient-to-br {
