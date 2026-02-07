@@ -178,23 +178,31 @@ const handleFeedChange = (feedId) => {
 };
 
 const setupIntersectionObserver = () => {
-  observer.value = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting && hasMore.value && !loadingMore.value) {
-        loadMore()
-      }
-    },
-    {
-      root: null,
-      rootMargin: '200px',
-      threshold: 0.1
-    }
-  )
+  if (observer.value) observer.value.disconnect(); // clear stari ako postoji
 
-  if (loadMoreTrigger.value) {
-    observer.value.observe(loadMoreTrigger.value)
-  }
+  const options = {
+    root: null, // prozor preglednika
+    rootMargin: '100px', // Okida 100px prije nego element dođe na ekran
+    threshold: 0.1 // Okida čim se vidi 10% elementa
+  };
+
+  observer.value = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    // safety provjera
+    if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
+      console.log('Infinite scroll upaljen'); 
+      loadMore();
+    }
+  }, options);
+
+  // dodan timeout da se dobro izrenderira
+  setTimeout(() => {
+    if (loadMoreTrigger.value) {
+      observer.value.observe(loadMoreTrigger.value);
+    }
+  }, 100);
 }
+
 
 //gledaj promjene kategorije
 watch(
