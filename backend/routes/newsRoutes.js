@@ -21,10 +21,9 @@ export default function createNewsRoutes(db) {
 
 
   const inicijalneGrupe = [
-    { id: 1, naziv: "Tech", opis: "Tehnološke vijesti", feedIds: [3, 4] },
-    { id: 2, naziv: "HR vijesti", opis: "Vijesti iz Hrvatske", feedIds: [2] },
-    { id: 3, naziv: "Globalne vijesti", opis: "Vijesti sa svijeta", feedIds: [1] },
-    { id: 4, naziv: "Sport", opis: "Sportske vijesti", feedIds: [5] },
+    { id: 1, naziv: "Tech", opis: "Tehnološke vijesti", feedIds: [7, 8, 9, 4, 10] },
+    { id: 2, naziv: "HR vijesti", opis: "Vijesti iz Hrvatske", feedIds: [1, 2, 3,] },
+    { id: 3, naziv: "Globalne vijesti", opis: "Vijesti sa svijeta", feedIds: [5, 6, 11, 12] }
   ];
 
   const inicijalniClanciMock = [
