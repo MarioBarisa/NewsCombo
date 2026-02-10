@@ -2,15 +2,14 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen" class="modal modal-open" @click.self="closeModal">
-        <div class="modal-box max-w-4xl w-full h-[90vh] p-0 relative overflow-hidden">
-          <!-- header -->
+        <div class="modal-box max-w-4xl w-full h-[90vh] p-0 relative flex flex-col overflow-hidden">
           <div
-            class="sticky top-0 z-10 bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center shadow-sm backdrop-blur-lg bg-base-100/95">
-            <div class="flex-1 pr-4">
-              <h3 class="font-bold text-lg line-clamp-1">
+            class="flex-shrink-0 bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center shadow-sm backdrop-blur-lg bg-base-100/95 z-10">
+            <div class="flex-1 min-w-0 sm:pr-4">
+              <h3 class="font-bold text-base sm:text-lg line-clamp-2 sm:line-clamp-1">
                 {{ newsItem?.title || 'Učitavanje...' }}
               </h3>
-              <div class="flex gap-2 items-center mt-1">
+              <div class="flex flex-wrap gap-2 items-center mt-1">
                 <p class="text-sm opacity-60" v-if="newsItem?.source">
                   {{ newsItem.source }}
                 </p>
@@ -21,7 +20,6 @@
             </div>
 
             <div class="flex gap-2">
-              <!-- otvori original -->
               <a v-if="newsItem?.link" :href="newsItem.link" target="_blank" rel="noopener noreferrer"
                 class="btn btn-sm btn-primary gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -29,10 +27,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
-                Otvori izvorno
+                <span class="hidden sm:inline">Otvori izvorno</span>
               </a>
-
-              <!-- zatvori modal -->
               <button @click="closeModal" class="btn btn-sm btn-circle btn-ghost" aria-label="Zatvori">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                   stroke="currentColor">
@@ -41,24 +37,18 @@
               </button>
             </div>
           </div>
-
-          <!-- članak sadržaj -->
-          <div class="h-full overflow-y-auto bg-base-100">
+          <div class="flex-1 min-h-0 overflow-y-auto bg-base-100">
             <article class="max-w-3xl mx-auto px-6 py-8">
-              <!-- thumbnail -->
               <figure v-if="articleImage && !imageError" class="mb-8 -mx-6 sm:mx-0">
                 <img :src="articleImage" :alt="newsItem?.title"
                   class="w-full rounded-none sm:rounded-xl shadow-2xl object-cover max-h-[500px]"
                   @error="handleImageError" loading="eager" />
               </figure>
 
-              <!-- head -->
               <header class="mb-8">
                 <h1 class="text-4xl sm:text-5xl font-extrabold mb-4 leading-tight text-base-content">
                   {{ newsItem?.title }}
                 </h1>
-
-                <!-- meta info -->
                 <div
                   class="flex flex-wrap gap-4 text-sm opacity-70 border-l-4 border-primary pl-4 py-3 bg-base-200/50 rounded-r">
                   <div v-if="articleAuthor" class="flex items-center gap-2">
@@ -149,30 +139,13 @@
                   Otvori na {{ getDomain(newsItem?.link) }}
                 </a>
               </div>
+
+              <div class="h-4"></div>
             </article>
           </div>
-
-          <!-- footer -->
           <div
-            class="sticky bottom-0 z-10 bg-base-100/95 backdrop-blur-lg border-t border-base-300 px-6 py-3 flex justify-between items-center shadow-lg">
+            class="flex-shrink-0 bg-base-100/95 backdrop-blur-lg border-t border-base-300 px-6 py-3 flex justify-between items-center shadow-lg z-10">
             <div class="flex gap-2">
-              <!-- 
-              <button @click="toggleLike" class="btn btn-sm btn-circle tooltip"
-                :class="isLiked ? 'btn-error' : 'btn-ghost'" data-tip="Sviđa mi se">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isLiked ? 'currentColor' : 'none'"
-                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </button>
-
-              <button @click="toggleDislike" class="btn btn-sm btn-circle tooltip"
-                :class="isDisliked ? 'btn-warning' : 'btn-ghost'" data-tip="Ne sviđa mi se">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isDisliked ? 'currentColor' : 'none'"
-                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button> -->
               <button @click="toggleBookmark" class="btn btn-sm btn-circle tooltip ml-2"
                 :class="isBookmarked ? 'btn-primary' : 'btn-ghost'" data-tip="Spremi za kasnije">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isBookmarked ? 'currentColor' : 'none'"
@@ -192,6 +165,7 @@
     </Transition>
   </Teleport>
 </template>
+
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
@@ -327,7 +301,6 @@ const enhanceContent = async () => {
   if (!props.newsItem?.link) return
 
   isEnhancing.value = true
-  console.log('📥 Učitavam cijeli članak:', props.newsItem.link)
 
   try {
     // proxy retry
@@ -382,16 +355,13 @@ const enhanceContent = async () => {
 
           if (paragraphs.length > 5) {
             enhancedContent.value = paragraphs.join('')
-            console.log(`članak učitan! (${paragraphs.length} paragrafa)`)
             return
           }
         }
       }
-
-      console.warn('⚠️ nema sadržaja ćlanka')
     }
   } catch (error) {
-    console.warn('⚠️ Greška pri učitavanju:', error.message)
+    console.warn('Greška pri učitavanju:', error.message)
   } finally {
     isEnhancing.value = false
   }

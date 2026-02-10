@@ -256,7 +256,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="w-full max-w-4xl mx-auto px-4 py-8 overflow-hidden">
+   <div class="w-full max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 overflow-x-hidden">
     <!-- Info o trenutnoj kategoriji
       <div v-if="feedsStore.selectedCategory" class="mb-6 p-4 bg-base-200 rounded-lg">
         <p class="text-sm">
@@ -273,12 +273,12 @@ onUnmounted(() => {
     <!-- head -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
       <h2 class="text-3xl font-bold">Najnovije vijesti</h2>
-      <div class="flex gap-2">
-        <button @click="setSortNewest" :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'" class="btn btn-sm"
+      <div class="flex flex-wrap gap-2">
+        <button @click="setSortNewest" :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'"class="btn btn-xs sm:btn-sm"
           :disabled="loading">
           Najnovije
         </button>
-        <button @click="setSortOldest" :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'" class="btn btn-sm"
+        <button @click="setSortOldest" :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'" class="btn btn-xs sm:btn-sm"
           :disabled="loading">
           Najstarije
         </button>

@@ -1,5 +1,5 @@
 <template>
-    <div class="news-carousel bg-base-200 rounded-lg p-6">
+    <div class="news-carousel bg-base-200 rounded-box p-4 sm:p-6">
       <h2 class="text-2xl font-bold mb-4">Najbitnije vijesti</h2>
       
       <div v-if="loading" class="flex justify-center py-8">
@@ -11,7 +11,7 @@
         <button 
           v-if="news.length > 1"
           @click="goToPrevious"
-          class="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-ghost hover:btn-primary transition-all duration-300"
+          class="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-xs sm:btn-sm btn-ghost hover:btn-primary transition-all duration-300"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -22,7 +22,7 @@
         <button 
           v-if="news.length > 1"
           @click="goToNext"
-          class="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-ghost hover:btn-primary transition-all duration-300"
+          class="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-xs sm:btn-sm btn-ghost hover:btn-primary transition-all duration-300"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -31,9 +31,9 @@
   
         <div 
           @click="openNewsDetail(currentNews)"
-          class="cursor-pointer hover:bg-base-300 rounded-lg p-4 transition-all duration-300 mx-8"
+          class="cursor-pointer hover:bg-base-300 rounded-box p-3 sm:p-4 transition-all duration-300 mx-0 sm:mx-8"
         >
-          <div class="flex gap-4">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div v-if="currentNews.enclosure?.link || currentNews.thumbnail" class="shrink-0">
               <img 
                 :src="currentNews.enclosure?.link || currentNews.thumbnail" 
@@ -46,8 +46,8 @@
               <h3 class="font-bold text-lg mb-2 line-clamp-2">{{ currentNews.title }}</h3>
               <p class="text-sm opacity-70 mb-2 line-clamp-3">{{ stripHtml(currentNews.description) }}</p>
               <div class="flex justify-between items-center text-xs opacity-60">
-                <span class="badge badge-sm badge-outline">{{ currentNews.source }}</span>
-                <span>{{ formatDate(currentNews.pubDate) }}</span>
+                <span class="badge badge-sm badge-outline w-fit">{{ currentNews.source }}</span>
+                <span class="whitespace-nowrap">{{ formatDate(currentNews.pubDate) }}</span>
               </div>
             </div>
           </div>

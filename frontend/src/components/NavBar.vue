@@ -10,55 +10,105 @@
         NewsCombo
       </router-link>
     </div>
-    <div class="dropdown dropdown-end ml-auto">
-      <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+    <div class="dropdown dropdown-end ml-auto" ref="dropdownContainer">
+      <div 
+        tabindex="0" 
+        role="button" 
+        class="btn btn-ghost btn-circle avatar"
+        ref="dropdownTrigger"
+      >
         <div class="w-10 sm:w-12 rounded-full">
           <img alt="Profilna slika"
             :src="authStore.user?.profilePicture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(authStore.user?.name || 'U')" />
         </div>
       </div>
-      <ul tabindex="-1" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">       
+      <ul 
+        tabindex="-1" 
+        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
+        ref="dropdownMenu"
+      >       
         <li>
-          <RouterLink to="/settings/feeds" class="justify-between"> Postavke feed-ova </RouterLink>
+          <RouterLink to="/settings/feeds" class="justify-between" @click="closeDropdown">
+            Postavke feed-ova
+          </RouterLink>
         </li>
         <li>
-          <RouterLink to="/bookmarks" class="justify-between">Spremljeni članci </RouterLink>
+          <RouterLink to="/bookmarks" class="justify-between" @click="closeDropdown">
+            Spremljeni članci
+          </RouterLink>
         </li>
         <li>
-          <RouterLink to="/profile" class="justify-between"> Profil </RouterLink>
+          <RouterLink to="/profile" class="justify-between" @click="closeDropdown">
+            Profil
+          </RouterLink>
         </li>
         <li>
-          <RouterLink to="/settings" class="justify-between"> Postavke </RouterLink>
+          <RouterLink to="/settings" class="justify-between" @click="closeDropdown">
+            Postavke
+          </RouterLink>
         </li>
-
-        <li><a @click="handleLogout">Logout</a></li>
+        <li>
+          <a @click="handleLogout">Logout</a>
+        </li>
       </ul>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/authStore';
-const authStore = useAuthStore();
 import { useRouter } from 'vue-router';
+
+const authStore = useAuthStore();
 const router = useRouter();
 
+
+const dropdownContainer = ref(null);
+const dropdownTrigger = ref(null);
+const dropdownMenu = ref(null);
+
+
+const closeDropdown = () => {
+  if (dropdownTrigger.value) {
+    dropdownTrigger.value.blur(); 
+  }
+};
+
+
+const handleScroll = () => {
+  closeDropdown();
+};
+
+
 function handleLogout() {
+  closeDropdown();
   authStore.logout();
   router.push('/landing');
 }
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true });
+
+  window.addEventListener('touchmove', handleScroll, { passive: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+  window.removeEventListener('touchmove', handleScroll);
+});
 </script>
 
 <style>
-  @media (max-width: 375px) {
+@media (max-width: 375px) {
   .navbar .btn {
     padding: 0.25rem 0.5rem; 
   }
   .navbar .text-xl {
-    font-size: 1rem; /*font manji */
+    font-size: 1rem;
   }
   .navbar .w-10 {
-    width: 2.5rem; /* manji avatar*/
+    width: 2.5rem;
     height: 2.5rem;
   }
 }

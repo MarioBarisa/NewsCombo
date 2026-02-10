@@ -45,8 +45,6 @@ export default function createNewsRoutes(db) {
     { id: 3, naziv: '24sata', url: 'https://www.24sata.hr/feeds/najnovije.xml', domain: '24sata.hr', kategorija: 'hrvatska', isCustom: true },
     { id: 4, naziv: 'Bug.hr', url: 'https://www.bug.hr/rss', domain: 'bug.hr', kategorija: 'tech', isCustom: true },
     { id: 5, naziv: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml', domain: 'bbc.co.uk', kategorija: 'world', isCustom: true },
-    { id: 6, naziv: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', domain: 'aljazeera.com', kategorija: 'world', isCustom: true },
-    { id: 7, naziv: 'TechCrunch', url: 'https://techcrunch.com/feed/', domain: 'techcrunch.com', kategorija: 'tech', isCustom: true },
     { id: 8, naziv: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', domain: 'arstechnica.com', kategorija: 'tech', isCustom: true },
     { id: 9, naziv: 'Hacker News', url: 'https://hnrss.org/frontpage', domain: 'news.ycombinator.com', kategorija: 'tech', isCustom: true },
     { id: 10, naziv: 'MIT Technology Review', url: 'https://www.technologyreview.com/feed/', domain: 'technologyreview.com', kategorija: 'tech', isCustom: true },
@@ -56,9 +54,9 @@ export default function createNewsRoutes(db) {
 
 
   const inicijalneGrupe = [
-    { id: 1, naziv: "Tech", opis: "Tehnološke vijesti", feedIds: [7, 8, 9, 4, 10] },
+    { id: 1, naziv: "Tech", opis: "Tehnološke vijesti", feedIds: [8, 9, 4, 10] },
     { id: 2, naziv: "HR vijesti", opis: "Vijesti iz Hrvatske", feedIds: [1, 2, 3,] },
-    { id: 3, naziv: "Globalne vijesti", opis: "Vijesti sa svijeta", feedIds: [5, 6, 11, 12] }
+    { id: 3, naziv: "Globalne vijesti", opis: "Vijesti sa svijeta", feedIds: [5, 11, 12] }
   ];
 
   const inicijalniClanciMock = [

@@ -63,13 +63,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div 
-    class="navbar-center w-full items-center justify-center"
-    @mouseleave="handleMouseLeave"
-  >
-    <!-- DESKTOP  -->
+  <div class="navbar-center w-full items-center justify-center">
     <div class="hidden md:flex items-center gap-1 flex-wrap justify-center">
-      <!-- AI sažetak odmah prvi -->
+      <!-- AI sažetak -->
       <button
         @click="selectCategory('ai-summary')"
         :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'btn-primary' : 'btn-ghost'"
@@ -102,53 +98,42 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- MOBILE  -->
-    <div class="md:hidden dropdown dropdown-bottom dropdown-end">
-      <button 
-        tabindex="0" 
-        class="btn btn-ghost btn-sm"
-        @click="handleClick"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
-        </svg>
-        <span class="ml-2">Kategorije</span>
-      </button>
-      <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 max-h-96 overflow-y-auto">
+    <!-- MOBILE-->
+    <div class="md:hidden w-full overflow-x-auto scrollbar-hide">
+      <div class="flex items-center gap-2 px-3 py-2 min-w-max">
         <!-- AI sažetak -->
-        <li>
-          <a
-            @click="selectCategory('ai-summary')"
-            :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'active' : ''"
-          >
-             🌟 AI Summary
-          </a>
-        </li>
+        <button
+          @click="selectCategory('ai-summary')"
+          :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
+          class="btn btn-sm whitespace-nowrap flex-shrink-0"
+        >
+          🌟 AI Sažetak
+        </button>
 
         <!-- SVI FEEDOVI -->
-        <li>
-          <a
-            @click="selectCategory('all')"
-            :class="feedsStore.selectedCategoryId === 'all' ? 'active' : ''"
-          >
-            📰 Svi feedovi
-          </a>
-        </li>
+        <button
+          @click="selectCategory('all')"
+          :class="feedsStore.selectedCategoryId === 'all' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
+          class="btn btn-sm whitespace-nowrap flex-shrink-0"
+        >
+          Svi feedovi
+        </button>
 
         <!-- CUSTOM KATEGORIJE -->
-        <li v-for="category in customCategories" :key="category.id">
-          <a
-            @click="selectCategory(category.id)"
-            :class="feedsStore.selectedCategoryId === category.id ? 'active' : ''"
-          >
-            {{ category.name }}
-            <span class="badge badge-sm">{{ category.feeds.length }}</span>
-          </a>
-        </li>
-      </ul>
+        <button
+          v-for="category in customCategories"
+          :key="category.id"
+          @click="selectCategory(category.id)"
+          :class="feedsStore.selectedCategoryId === category.id ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
+          class="btn btn-sm whitespace-nowrap flex-shrink-0"
+        >
+          {{ category.name }}
+          <span class="badge badge-xs ml-1">{{ category.feeds.length }}</span>
+        </button>
+      </div>
     </div>
 
-    <!-- INFO -->
+    <!-- INFO badge (samo desktop) -->
     <div v-if="feedsStore.selectedCategory.id !== 'all' && feedsStore.selectedCategory.id !== 'ai-summary'" 
          class="ml-4 hidden sm:flex items-center gap-2 text-sm opacity-75">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -158,3 +143,20 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+</style>
+
