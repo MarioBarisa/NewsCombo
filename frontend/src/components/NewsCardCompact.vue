@@ -18,7 +18,12 @@ const isBookmarked = ref(false);
 const imageUrl = computed(() => {
   if (imageError.value) return null
 
+  if (props.news.imageUrl) {
+    return props.news.imageUrl
+  }
+
   const possibleImages = [
+    props.news.enclosure?.url,      
     props.news.enclosure?.link,
     props.news.thumbnail,
     props.news.image,
@@ -28,6 +33,7 @@ const imageUrl = computed(() => {
 
   return possibleImages[0] || null
 })
+
 
 const cleanDescription = computed(() => {
   if (!props.news.description) return 'Nema opisa dostupnog.'

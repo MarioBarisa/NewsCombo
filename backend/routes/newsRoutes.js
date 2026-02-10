@@ -1,5 +1,40 @@
 import express from "express";
 
+function extractImageUrl(item) {
+  // 1. Standardni enclosure 
+  if (item.enclosure && item.enclosure.url) {
+    return item.enclosure.url;
+  }
+
+  // 2. (media:content, media:thumbnail)
+  if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
+    return item['media:content']['$'].url;
+  }
+  
+  if (item['media:thumbnail'] && item['media:thumbnail']['$'] && item['media:thumbnail']['$'].url) {
+    return item['media:thumbnail']['$'].url;
+  }
+
+  // 3.  (array)
+  if (item['media:content'] && Array.isArray(item['media:content']) && item['media:content'][0]) {
+    const media = item['media:content'][0];
+    if (media['$'] && media['$'].url) {
+      return media['$'].url;
+    }
+  }
+
+  // 4. 
+  const htmlContent = item['content:encoded'] || item.content || item.description || '';
+  if (htmlContent) {
+    const imgMatch = htmlContent.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && imgMatch[1]) {
+      return imgMatch[1];
+    }
+  }
+
+  return null;
+}
+
 export default function createNewsRoutes(db) {
   const router = express.Router();
 
@@ -575,7 +610,8 @@ router.get("/rss/validate", async (req, res) => {
 });
   
   
-  // RSS PARSER ENDPOINT - za frontend
+  // RSS PARSER ENDPOINT 
+  // NE KORISTI SE JER SE KORISTI NewsGlobal.js client side pristup
 router.get("/rss/parse/:feedId", async (req, res) => {
   try {
     const feedId = parseInt(req.params.feedId);
@@ -611,8 +647,10 @@ router.get("/rss/parse/:feedId", async (req, res) => {
       source: feed.naziv,
       feedId: feed.id,
       category: feed.kategorija,
-      enclosure: item.enclosure
+      imageUrl: extractImageUrl(item),  // ✅ Nova helper funkcija
+      enclosure: item.enclosure  // Zadrži za kompatibilnost
     }));
+    
 
     res.json({
       feedId: feed.id,
@@ -670,8 +708,10 @@ router.post("/rss/parse-multiple", async (req, res) => {
           source: feed.naziv,
           feedId: feed.id,
           category: feed.kategorija,
+          imageUrl: extractImageUrl(item),  // ✅ Nova helper funkcija
           enclosure: item.enclosure
         }));
+        
 
         results.push({
           feedId: feed.id,
