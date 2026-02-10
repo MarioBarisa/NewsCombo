@@ -217,6 +217,17 @@ watch(
   }
 )
 
+
+watch(
+  () => filteredNews.value.length,
+  () => {
+    setTimeout(() => {
+      setupIntersectionObserver();
+    }, 100);
+  }
+);
+
+
 const setSortNewest = async () => {
   sortOrder.value = 'desc';
   await refreshNews();
