@@ -168,7 +168,8 @@
 
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { API_URL } from '../config.js';
 
 const props = defineProps({
   newsItem: {
@@ -412,7 +413,7 @@ const toggleDislike = () => {
 
 // provjera i toggle bookmarka
 const toggleBookmark = async () => {
-  const url = 'http://localhost:3005/bookmarks'; 
+  const url = `${API_URL}/bookmarks`;
   const method = isBookmarked.value ? 'DELETE' : 'POST';
 
   try {

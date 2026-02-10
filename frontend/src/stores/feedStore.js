@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import newsApi from '../api/newsApi.js';
+import { API_URL } from '../config.js';
 
 export const useFeedsStore = defineStore('feeds', () => {
   const categories = ref([
@@ -489,8 +490,8 @@ const refreshStore = async () => {
         'Authorization': `Bearer ${token}` 
       };
 
-      await fetch('http://localhost:3005/pocetnoStanjeFeed', { method: 'POST', headers });
-      await fetch('http://localhost:3005/pocetnoGrupe', { method: 'POST', headers });
+      await fetch(`${API_URL}/pocetnoStanjeFeed`, { method: 'POST', headers });
+      await fetch(`${API_URL}/pocetnoGrupe`, { method: 'POST', headers });
       
       await initializeStore();
       return true;

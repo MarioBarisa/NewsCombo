@@ -46,6 +46,7 @@
   </template>
   
   <script setup>
+  import { API_URL } from '../config.js';
   import { ref, onMounted } from 'vue';
   
   const bookmarks = ref([]);
@@ -54,7 +55,7 @@
   const fetchBookmarks = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:3005/bookmarks', {
+      const res = await fetch(`${API_URL}/bookmarks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -72,7 +73,7 @@
     const token = localStorage.getItem('token');
     
     try {
-      await fetch('http://localhost:3005/bookmarks', {
+      await fetch(`${API_URL}/bookmarks`, {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',

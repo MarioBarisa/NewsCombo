@@ -194,6 +194,8 @@
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../stores/authStore';
 import { useRouter } from 'vue-router';
+import { API_URL } from '../config.js';
+
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -232,7 +234,7 @@ async function saveProfile() {
       payload.newPassword = form.value.newPassword;
     }
 
-    const res = await fetch('http://localhost:3005/api/auth/profile', {
+    const res = await fetch(`${API_URL}/api/auth/profile`,  {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -275,7 +277,7 @@ async function uploadImage(event) {
   reader.onload = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3005/api/auth/profile-picture', {
+      const res = await fetch(`${API_URL}/api/auth/profile-picture`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -308,7 +310,7 @@ const handleDeleteAccount = async () => {
   isDeleting.value = true;
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:3005/api/auth/delete-account', {
+    const response = await fetch(`${API_URL}/api/auth/delete-account`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,

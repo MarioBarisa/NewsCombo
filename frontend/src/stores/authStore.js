@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { API_URL } from '../config.js';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -12,7 +13,7 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     async login(email, password) {
-      const res = await fetch('http://localhost:3005/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -26,7 +27,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async register(email, password, name) {
-      const res = await fetch('http://localhost:3005/api/auth/register', {
+      const res = await fetch(`${API_URL}api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name })
@@ -41,7 +42,7 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchUser() {
       if (!this.token) return;
-      const res = await fetch('http://localhost:3005/api/auth/me', {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${this.token}` }
       });
       if (res.ok) this.user = await res.json();

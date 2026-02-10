@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_URL } from '../config.js';
 
-const API_BASE_URL = "http://localhost:3005";
+const API_BASE_URL = API_URL;
 
 export default {
     getAllFeeds() {

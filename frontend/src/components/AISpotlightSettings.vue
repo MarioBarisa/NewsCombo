@@ -238,7 +238,8 @@
   import { ref, computed, onMounted } from 'vue';
   import axios from 'axios';
   
-  const API_URL = 'http://localhost:3005/api';
+  import { API_URL as BASE_URL } from '../config.js';
+  const API_URL = `${BASE_URL}/api`;  
   
 
   const aiGroup = ref({});

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useFeedsStore } from '../stores/feedStore';
+import { API_URL } from '../config.js';
 
 const feedsStore = useFeedsStore();
 
@@ -118,7 +119,7 @@ const checkRssValidity = async () => {
     new URL(customFeedUrl.value);
 
     // poziv na backend za provjeru RSS-a
-    const response = await fetch(`http://localhost:3005/rss/validate?url=${encodeURIComponent(customFeedUrl.value)}`, {
+    const response = await fetch(`${API_URL}/rss/validate?url=${encodeURIComponent(customFeedUrl.value)}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();

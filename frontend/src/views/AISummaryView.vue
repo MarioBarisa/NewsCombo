@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 
 const router = useRouter();
-const API_URL = 'http://localhost:3005/api';
+import { API_URL as BASE_URL } from '../config.js';
+const API_URL = `${BASE_URL}/api`;
 
 const aiGroup = ref({});
 const summaries = ref([]);

@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue';
+import { API_URL } from '../config.js';
 
 const props = defineProps({
   news: {
@@ -81,7 +82,7 @@ onMounted(() => {
 })
 
 const toggleBookmark = async () => {
-  const url = 'http://localhost:3005/bookmarks';
+  const url = `${API_URL}/bookmarks`;
   const method = isBookmarked.value ? 'DELETE' : 'POST';
   const token = localStorage.getItem('token');
 
