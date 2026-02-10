@@ -609,7 +609,6 @@ router.get("/rss/validate", async (req, res) => {
   
   
   // RSS PARSER ENDPOINT 
-  // NE KORISTI SE JER SE KORISTI NewsGlobal.js client side pristup
 router.get("/rss/parse/:feedId", async (req, res) => {
   try {
     const feedId = parseInt(req.params.feedId);
@@ -645,8 +644,8 @@ router.get("/rss/parse/:feedId", async (req, res) => {
       source: feed.naziv,
       feedId: feed.id,
       category: feed.kategorija,
-      imageUrl: extractImageUrl(item),  // ✅ Nova helper funkcija
-      enclosure: item.enclosure  // Zadrži za kompatibilnost
+      imageUrl: extractImageUrl(item),  
+      enclosure: item.enclosure  
     }));
     
 
@@ -706,7 +705,7 @@ router.post("/rss/parse-multiple", async (req, res) => {
           source: feed.naziv,
           feedId: feed.id,
           category: feed.kategorija,
-          imageUrl: extractImageUrl(item),  // ✅ Nova helper funkcija
+          imageUrl: extractImageUrl(item),  
           enclosure: item.enclosure
         }));
         
