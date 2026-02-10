@@ -7,6 +7,7 @@ const cachedNews = ref([]);
 const newsBySource = ref({});
 const loadingProgress = ref(0);
 
+/*
 // više proxija
 const CORS_PROXIES = [
   'https://corsproxy.io/?',
@@ -29,6 +30,7 @@ const getProxyUrl = (feedUrl, addCacheBust = false) => {
 const rotateProxy = () => {
   currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
 };
+*/
 
 // cache
 const CACHE_KEY = 'newsCombo_rss_cache';
@@ -176,6 +178,22 @@ const extractThumbnail = (item, rawContent) => {
 
 const parseRSSFeed = (xmlText, feed) => {
   try {
+    if (xmlText && xmlText.isBackendFormat) {
+      return xmlText.items.map(item => ({
+        title: item.title || 'Bez naslova',
+        description: cleanDescription(item.description || item.content || ''),
+        link: item.link || '#',
+        pubDate: item.pubDate || new Date().toISOString(),
+        source: feed.name,
+        domain: feed.domain || 'unknown',
+        category: feed.category || 'general',
+        feedId: feed.id,
+        thumbnail: item.enclosure?.url || item['media:thumbnail']?.url || item['media:content']?.url || null,
+        guid: item.guid || item.link || `${feed.name}-${Date.now()}-${Math.random()}`
+      }));
+    }
+
+    // Legacy CORS proxy format 
     const parser = new DOMParser();
     const xml = parser.parseFromString(xmlText, 'text/xml');
     
@@ -241,34 +259,58 @@ const parseRSSFeed = (xmlText, feed) => {
   }
 };
 
-async function fetchRSSFeed(feedUrl, feedName, retries = 3, forceRefresh = false) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const proxyUrl = getProxyUrl(feedUrl, forceRefresh);
-      
-      const response = await fetch(proxyUrl, {
-        headers: { 'Accept': 'application/rss+xml, application/xml, text/xml, */*' }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const xmlText = await response.text();
-      return xmlText;
-      
-    } catch (error) {
-      console.warn(`${feedName} pokušaj ${attempt}/${retries}:`, error.message);
-      
-      if (attempt < retries) {
-        rotateProxy();
-        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
-      }
+async function fetchRSSFeed(feedUrl, feedName) {
+  try {
+    const { API_URL } = await import('../config.js');
+    const token = localStorage.getItem('token');
+    
+    const response = await fetch(`${API_URL}/rss/fetch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ urls: [feedUrl] })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.status}`);
     }
+
+    const data = await response.json();
+    const feedData = data.feeds[0];
+    
+    if (!feedData || !feedData.success) {
+      console.warn(`${feedName}: ${feedData?.error || 'Unknown error'}`);
+      return null;
+    }
+
+    return convertBackendFeedToXML(feedData);
+
+  } catch (error) {
+    console.error(`${feedName}: ${error.message}`);
+    return null;
   }
-  
-  return null;
 }
+
+
+function convertBackendFeedToXML(feedData) {
+  const items = feedData.items.map(item => ({
+    title: item.title,
+    link: item.link,
+    pubDate: item.pubDate || item.isoDate,
+    description: item.contentSnippet || item.content || '',
+    content: item.content || item.contentSnippet || '',
+    guid: item.guid || item.link,
+    enclosure: item.enclosure,
+    'media:thumbnail': item['media:thumbnail'],
+    'media:content': item['media:content']
+  }));
+
+  return { items, isBackendFormat: true };
+}
+
+
 
 
   const sortAndUpdateNews = () => {
@@ -453,8 +495,6 @@ const refreshNews = async (categoryId = null) => {
   cachedNews.value = [];
   newsBySource.value = {};
   
-  // reset proxy-a na prvi iz array-a
-  currentProxyIndex = 0;
   return await fetchNewsFresh(categoryId, true);
 };
 

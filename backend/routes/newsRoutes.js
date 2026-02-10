@@ -738,6 +738,59 @@ router.post("/rss/parse-multiple", async (req, res) => {
     });
   }
 });
+  
+  // RSS PROXY RUTA (za izbjegavanje CORS-a)
+router.post("/rss/fetch", async (req, res) => {
+  const { urls } = req.body; 
+  
+  if (!urls || !Array.isArray(urls) || urls.length === 0) {
+    return res.status(400).json({ error: "URLs array je obavezan" });
+  }
+
+  if (urls.length > 20) {
+    return res.status(400).json({ error: "Maksimum 20 feedova odjednom" });
+  }
+
+  try {
+    const Parser = (await import('rss-parser')).default;
+    const parser = new Parser({
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'NewsCombo/1.0'
+      }
+    });
+
+    const results = await Promise.allSettled(
+      urls.map(async (url) => {
+        try {
+          const feed = await parser.parseURL(url);
+          return {
+            url,
+            success: true,
+            items: feed.items.slice(0, 10),
+            title: feed.title,
+            description: feed.description
+          };
+        } catch (error) {
+          return {
+            url,
+            success: false,
+            error: error.message
+          };
+        }
+      })
+    );
+
+    const formattedResults = results.map(result => 
+      result.status === 'fulfilled' ? result.value : result.reason
+    );
+
+    res.status(200).json({ feeds: formattedResults });
+  } catch (error) {
+    res.status(500).json({ error: "Greška pri fetchanju feedova", details: error.message });
+  }
+});
+
 
 
   return router;
