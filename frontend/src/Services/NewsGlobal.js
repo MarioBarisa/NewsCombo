@@ -176,20 +176,48 @@ const extractThumbnail = (item, rawContent) => {
 };
 
 
+const extractImageFromItem = (item) => {
+  if (item.enclosure && item.enclosure.url) return item.enclosure.url;
+
+  const mediaKeys = ['media:thumbnail', 'media:content', 'media:group'];
+  for (const key of mediaKeys) {
+    const val = item[key];
+    if (!val) continue;
+    if (val.url) return val.url;
+    if (val.$ && val.$.url) return val.$.url; 
+    if (Array.isArray(val)) { 
+      const found = val.find(v => v.url || (v.$ && v.$.url));
+      if (found) return found.url || found.$.url;
+    }
+  }
+
+  const htmlContent = item.content || item.description || item.contentSnippet || '';
+  if (typeof htmlContent === 'string') {
+    const imgMatch = htmlContent.match(/<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && imgMatch[1]) {
+      return imgMatch[1].replace(/&amp;/g, '&');
+    }
+  }
+
+  return null;
+};
+
+
+
 const parseRSSFeed = (xmlText, feed) => {
   try {
     if (xmlText && xmlText.isBackendFormat) {
       return xmlText.items.map(item => ({
         title: item.title || 'Bez naslova',
-        description: cleanDescription(item.description || item.content || ''),
+        description: cleanDescription(item.description || item.content || item.contentSnippet || ''),
         link: item.link || '#',
-        pubDate: item.pubDate || new Date().toISOString(),
+        pubDate: item.pubDate || item.isoDate || new Date().toISOString(),
         source: feed.name,
         domain: feed.domain || 'unknown',
         category: feed.category || 'general',
         feedId: feed.id,
-        thumbnail: item.enclosure?.url || item['media:thumbnail']?.url || item['media:content']?.url || null,
-        guid: item.guid || item.link || `${feed.name}-${Date.now()}-${Math.random()}`
+        thumbnail: extractImageFromItem(item), 
+        guid: item.guid || item.id || item.link || `${feed.name}-${Date.now()}-${Math.random()}`
       }));
     }
 
@@ -300,7 +328,7 @@ function convertBackendFeedToXML(feedData) {
     link: item.link,
     pubDate: item.pubDate || item.isoDate,
     description: item.contentSnippet || item.content || '',
-    content: item.content || item.contentSnippet || '',
+    content: item.originalContent || item.encodedContent || item.content || item.contentSnippet || '',
     guid: item.guid || item.link,
     enclosure: item.enclosure,
     'media:thumbnail': item['media:thumbnail'],

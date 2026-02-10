@@ -756,6 +756,14 @@ router.post("/rss/fetch", async (req, res) => {
       timeout: 10000,
       headers: {
         'User-Agent': 'NewsCombo/1.0'
+      },
+      customFields: {
+        item: [
+          ['content', 'originalContent'],        
+          ['content:encoded', 'encodedContent'], 
+          'media:content', 
+          'media:thumbnail'
+        ]
       }
     });
 
