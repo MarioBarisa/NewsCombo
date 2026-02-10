@@ -1,5 +1,6 @@
 // Centralna konfiguracija API URL-a
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3005';
+const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:3005';
+export const API_URL = rawUrl.replace(/\/+$/, '');
 
 // Debug mode (pokazuje API URL u konzoli)
 //if (import.meta.env.DEV) {
