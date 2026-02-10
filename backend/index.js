@@ -9,6 +9,16 @@ app.use(cors({
     credentials: true
   }));
 const PORT = 3005;
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+      status: 'OK', 
+      message: 'NewsCombo Backend is running',
+      timestamp: new Date().toISOString()
+    });
+});
+  
+
 import { connectToDatabase } from './mongo.js';
 import createNewsRoutes from "./routes/newsRoutes.js";
 import createBookmarkRoutes from "./routes/bookMarkRoutes.js";
