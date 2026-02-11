@@ -237,6 +237,7 @@
   <script setup>
   import { ref, computed, onMounted } from 'vue';
   import axios from 'axios';
+  import newsApi from '../api/newsApi.js';
   
   import { API_URL as BASE_URL } from '../config.js';
   const API_URL = `${BASE_URL}/api`;  
@@ -298,13 +299,13 @@
   }
   
   async function loadAllFeeds() {
-    try {
-      const response = await axios.get('http://localhost:3005/feedovi');
-      allFeeds.value = response.data;
-    } catch (error) {
-      console.error('Greška pri učitavanju feedova:', error);
-    }
+  try {
+    const response = await newsApi.getAllFeeds();  
+    allFeeds.value = response.data;
+  } catch (error) {
+    console.error('Greška pri učitavanju feedova:', error);
   }
+}
   
   async function loadGenerationStatus() {
     try {
