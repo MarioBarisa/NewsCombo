@@ -424,13 +424,17 @@ const toggleDislike = () => {
 const toggleBookmark = async () => {
   const url = `${API_URL}/bookmarks`;
   const method = isBookmarked.value ? 'DELETE' : 'POST';
+  const token = localStorage.getItem('token'); 
 
   try {
     const bodyContent = enhancedContent.value || props.newsItem.description || '';
 
     const response = await fetch(url, {
       method: method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      },
       body: JSON.stringify({
         title: props.newsItem.title,
         originalUrl: props.newsItem.link,
@@ -442,11 +446,15 @@ const toggleBookmark = async () => {
 
     if (response.ok) {
       isBookmarked.value = !isBookmarked.value;
+    } else {
+      const errorData = await response.json();
     }
   } catch (e) {
     console.error("Greška s bookmarkom:", e);
+    
   }
 }
+
 
 const savePreference = () => {
   try {
