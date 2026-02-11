@@ -798,6 +798,41 @@ router.post("/rss/fetch", async (req, res) => {
   }
 });
 
+router.get("/proxy-article", async (req, res) => {
+  const { url } = req.query;
+  
+  if (!url) {
+    return res.status(400).json({ error: 'URL parametar je obavezan' });
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'hr-HR,hr;q=0.9,en;q=0.8'
+      },
+      timeout: 8000
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ 
+        error: `Izvor vratio status ${response.status}` 
+      });
+    }
+
+    const html = await response.text();
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+
+  } catch (error) {
+    console.error('Proxy error:', error.message);
+    res.status(500).json({ 
+      error: 'Greška pri dohvaćanju članka',
+      details: error.message 
+    });
+  }
+});
 
 
   return router;

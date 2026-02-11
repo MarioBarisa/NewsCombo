@@ -189,10 +189,10 @@ const imageError = ref(false)
 const isEnhancing = ref(false)
 const enhancedContent = ref('')
 const isBookmarked = ref(false)
-const CORS_PROXIES = [
-  'https://corsproxy.io/?',
-  'https://api.allorigins.win/raw?url=',
-]
+
+
+const BACKEND_PROXY = `${API_URL}/proxy-article?url=`;
+
 
 const articleImage = computed(() => {
   return props.newsItem?.enclosure?.link ||
@@ -304,11 +304,9 @@ const enhanceContent = async () => {
   isEnhancing.value = true
 
   try {
-    // proxy retry
-    let htmlContent = await fetchWithProxy(props.newsItem.link, 0)
-    if (!htmlContent) {
-      htmlContent = await fetchWithProxy(props.newsItem.link, 1)
-    }
+
+        let htmlContent = await fetchWithProxy(props.newsItem.link);
+
 
     if (htmlContent) {
       const parser = new DOMParser()
@@ -323,8 +321,14 @@ const enhanceContent = async () => {
         '[role="article"]',
         'main article',
         '.content-body',
-        '#article-content'
+        '#article-content',
+        '.article__content', 
+        '.single-article__content', 
+        '.story-body', 
+        '.c-article-body',
+        'div[data-component="text-block"]' 
       ]
+
 
       for (const selector of selectors) {
         const element = doc.querySelector(selector)
@@ -368,34 +372,39 @@ const enhanceContent = async () => {
   }
 }
 
-// fetch s proxy-jem (s retry logikom)
-const fetchWithProxy = async (url, proxyIndex) => {
-  try {
-    const proxyUrl = `${CORS_PROXIES[proxyIndex]}${encodeURIComponent(url)}`
 
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 8000)
+const fetchWithProxy = async (url) => {
+  try {
+    const proxyUrl = `${BACKEND_PROXY}${encodeURIComponent(url)}`;
+    const token = localStorage.getItem('token');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const response = await fetch(proxyUrl, {
       method: 'GET',
       signal: controller.signal,
       headers: {
         'Accept': 'text/html',
+        'Authorization': `Bearer ${token}` 
       }
-    })
+    });
 
-    clearTimeout(timeoutId)
+    clearTimeout(timeoutId);
 
     if (response.ok) {
-      return await response.text()
+      return await response.text();
     }
 
-    return null
+    console.warn(`Backend proxy vratio status ${response.status}`);
+    return null;
   } catch (err) {
-    console.warn(`Proxy ${proxyIndex} failed:`, err.message)
-    return null
+    console.warn('Backend proxy greška:', err.message);
+    return null;
   }
-}
+};
+
+
 
 const toggleLike = () => {
   if (isDisliked.value) isDisliked.value = false
@@ -479,9 +488,7 @@ watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     loadPreferences()
     document.body.style.overflow = 'hidden'
-    enhancedContent.value = '' // Reset
-
-    // pokreni učitavanje cijelog članaka
+    enhancedContent.value = '' 
     setTimeout(() => {
       enhanceContent()
     }, 100)

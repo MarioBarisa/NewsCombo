@@ -202,6 +202,23 @@ const extractImageFromItem = (item) => {
   return null;
 };
 
+// helper za određivanje pravog dijela članka
+const getBestContent = (item) => {
+  const content = item.content || item.encodedContent || item.originalContent || '';
+  const description = item.description || item.contentSnippet || '';
+  
+  if (content.length > description.length + 50) {
+     return content;
+  }
+  return description || content; 
+};
+
+//helper za datume
+const parseDateSafe = (dateStr) => {
+  if (!dateStr) return new Date().toISOString();
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+};
 
 
 const parseRSSFeed = (xmlText, feed) => {
@@ -209,9 +226,9 @@ const parseRSSFeed = (xmlText, feed) => {
     if (xmlText && xmlText.isBackendFormat) {
       return xmlText.items.map(item => ({
         title: item.title || 'Bez naslova',
-        description: cleanDescription(item.description || item.content || item.contentSnippet || ''),
+        description: cleanDescription(getBestContent(item)),
         link: item.link || '#',
-        pubDate: item.pubDate || item.isoDate || new Date().toISOString(),
+        pubDate: parseDateSafe(item.pubDate || item.isoDate),
         source: feed.name,
         domain: feed.domain || 'unknown',
         category: feed.category || 'general',
