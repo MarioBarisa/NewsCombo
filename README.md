@@ -1,5 +1,21 @@
 
-# NewsCombo - Kratki Opis Funkcionalnosti
+# NewsCombo - Specijalizirana web aplikacija za personalizirano praćenje vijesti putem RSS feedova
+
+- STUDENT: Mario Bariša
+
+[Fakultet informatike u Puli](https://www.fip.unipu.hr)
+KOLEGIJ: WEB APPS
+PROFESOR: NIKOLA TANKOVIC
+
+## LINK NA SVE DIAGRAME 
+
+[Diagrami](https://mariobarisa.craft.me/newscomboDijagrami)
+
+## Dokumentacija
+
+[NewsComboDokumentacija.pdf](https://mariobarisa.craft.me/newscombodokumnetacija)
+
+## Kratki opis funkcionalnosti
 
 Aplikacija omogućava korisnicima personalizirano praćenje vijesti putem RSS feedova kroz sljedeće značajke:
 
@@ -13,19 +29,10 @@ Aplikacija omogućava korisnicima personalizirano praćenje vijesti putem RSS fe
   - Poveznici na originalni članak
   - Slici/thumbnail-u
   - Kategoriji kojoj pripada
-- **Personalizacija sadržaja:** Korisnici aktivno oblikuju svoj feed:
-  - Like/Dislike mehanizam na člancima
-  - Automatsko učenje preferencija (JEDNOSTAVNI algoritam pamti teme koje korisnik preferira ( postepeno ih zaboravi kako bi pratio trenutno zanimanje  ))
-  - Prilagođeni prikaz članaka prema personal scoreu ( korisnik ovo ne vidi ali ideja je da se članci koji če korisnika najviše zanimati pojave na vrhu )
-  - Filtriranje neželjenih tema
 - **AI Daily Spotlight:** Aplikacija dnevno generira:
   - Sažetak najvažnijih vijesti
   - AI-generirani pregled svih ( nekoliko ) -> top vijesti is svake kategorije ( news feed-a od korisnika )
   - Personalizirane preporuke članaka
 - **Cross-device sync:** Sve postavke i preferencije sinkronizirane na svim uređajima
-- **Dark/Light mode**
-- **Dodatne značajke: AKO STIGNEM**
-  - Real-time notifikacije o novim člancima ( o novim vijestima od izvora koje korisnik voli npr )
-  - Napredna pretraga i filtriranje ( članaka i news izvora )
-  - Export/Import pretplata 
+
   
