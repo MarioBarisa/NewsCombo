@@ -391,8 +391,10 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
   
   isLoading.value = true;
   error.value = null;
-  newsBySource.value = {}; 
   loadingProgress.value = 0;
+  
+  
+  const tempNewsBySource = {};
   
   console.log(`Fetch vijesti${forceRefresh ? ' (FORCE REFRESH)' : ''}...`);
   
@@ -415,13 +417,11 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
       error.value = 'Nema konfiguriranih feedova';
       return [];
     }
-
   
     let successCount = 0;
     let completedCount = 0;
     const totalFeeds = feedsToFetch.length;
     const startTime = performance.now();
-
     
     const allResults = [];
 
@@ -445,9 +445,10 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
             item.fetchedAt = new Date().toISOString();
           });
           
-
           allResults.push(...items);
-          newsBySource.value[feed.name] = items;
+          
+          tempNewsBySource[feed.name] = items;
+          
           successCount++;
           
           const feedTime = Math.round(performance.now() - feedStartTime);
@@ -473,23 +474,31 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
         seen.add(key);
         return true;
       });
-
-      // Sortiranje 
+ 
       unique.sort((a, b) => {
         const dateA = new Date(b.pubDate || 0).getTime();
         const dateB = new Date(a.pubDate || 0).getTime();
         return dateA - dateB;
       });
 
-      cachedNews.value = unique.slice(0, 150);
-      setCachedData(cachedNews.value);
-      error.value = null;
+      
+      const newCachedNews = unique.slice(0, 150);
+      
+      if (newCachedNews.length > 0) {
+        cachedNews.value = newCachedNews;
+        newsBySource.value = tempNewsBySource;
+        
+        setCachedData(cachedNews.value);
+        error.value = null;
+      }
       
       const totalTime = Math.round(performance.now() - startTime);
       console.log(`UKUPNO: ${cachedNews.value.length} vijesti iz ${successCount}/${totalFeeds} izvora (${totalTime}ms)`);
     } else {
       error.value = `Nije moguće učitati vijesti (0/${totalFeeds} izvora)`;
-      cachedNews.value = getMockNews();
+      if (cachedNews.value.length === 0) {
+          cachedNews.value = getMockNews();
+      }
     }
 
     return cachedNews.value;
@@ -497,13 +506,16 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
   } catch (err) {
     console.error('Kritična greška:', err);
     error.value = 'Greška pri dohvaćanju vijesti';
-    cachedNews.value = getMockNews();
+    if (cachedNews.value.length === 0) {
+       cachedNews.value = getMockNews();
+    }
     return cachedNews.value;
   } finally {
     isLoading.value = false;
     loadingProgress.value = 100;
   }
 };
+
 
 
 const getNewsByCategory = (category) => {

@@ -101,25 +101,26 @@ const refreshNews = async () => {
     return;
   }
   try {
-    //feedsStore.loadFromLocalStorage();
     const categoryId = feedsStore.selectedCategoryId;
-    console.log('🔄 Refresham vijesti za kategoriju:', categoryId);
+    console.log('Refresham vijesti za kategoriju:', categoryId);
     const fetchedNews = await newsService.refreshNews(categoryId);
     
     if (fetchedNews && fetchedNews.length > 0) {
-      console.log(' Učitano', fetchedNews.length, 'vijesti');
+      console.log('Učitano', fetchedNews.length, 'vijesti');
       allNews.value = fetchedNews;
       displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
       currentPage.value = 1;
     } else {
-      console.warn(' Nema vijesti za ovu kategoriju');
-      allNews.value = [];
-      displayedNews.value = [];
+      console.warn('Nema vijesti za ovu kategoriju');
+      if (allNews.value.length === 0) {
+        displayedNews.value = [];
+      }
     }
   } catch (err) {
     console.error('Error refreshing news:', err);
   }
 };
+
 
 const loadDemoNews = () => {
   console.log('demo vijesti')
@@ -241,7 +242,14 @@ const setSortOldest = async () => {
 onMounted(async () => {
   loadPreferences()
   await feedsStore.initializeStore()
-  await refreshNews()
+  
+  const categoryId = feedsStore.selectedCategoryId;
+  const fetchedNews = await newsService.fetchNews(categoryId);
+  
+  if (fetchedNews && fetchedNews.length > 0) {
+    allNews.value = fetchedNews;
+    displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+  }
 
   setTimeout(() => {
     setupIntersectionObserver()
