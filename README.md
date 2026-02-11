@@ -4,8 +4,8 @@
 - STUDENT: Mario Bariša
 
 [Fakultet informatike u Puli](https://www.fip.unipu.hr)
-KOLEGIJ: WEB APPS
-PROFESOR: NIKOLA TANKOVIC
+- KOLEGIJ: WEB APPS
+- PROFESOR: Nikola Tankovic
 
 ## LINK NA SVE DIAGRAME 
 
