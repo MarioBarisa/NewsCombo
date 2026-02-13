@@ -33,6 +33,6 @@ Aplikacija omogućava korisnicima personalizirano praćenje vijesti putem RSS fe
   - Sažetak najvažnijih vijesti
   - AI-generirani pregled svih ( nekoliko ) -> top vijesti is svake kategorije ( news feed-a od korisnika )
   - Personalizirane preporuke članaka
-- **Cross-device sync:** Sve postavke i preferencije sinkronizirane na svim uređajima
+- **Cross-device sync:** Sve feedovi sync-ani na svim uređajima!
 
   
