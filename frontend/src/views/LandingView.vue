@@ -285,4 +285,10 @@ async function handleRegister() {
     transform: translateY(-100%);
   }
 }
+
+@supports (min-height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh !important;
+  }
+}
 </style>

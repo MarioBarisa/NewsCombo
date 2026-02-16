@@ -1,5 +1,5 @@
 <template>
-  <div class="navbar bg-base-100 shadow-lg">
+  <div class="navbar bg-base-100 shadow-lg sticky top-0 z-50">
     <div class="flex-1">
       <router-link to="/" class="btn btn-ghost text-xl">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24"
@@ -112,4 +112,11 @@ onUnmounted(() => {
     height: 2.5rem;
   }
 }
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .navbar {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
 </style>

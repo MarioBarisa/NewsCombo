@@ -40,12 +40,18 @@
 
 
 html, body, #app {
-  height: 100%;
+  min-height: 100dvh; 
+  min-height: 100vh;   
   margin: 0;
-  overflow-x: hidden; /* spriječi horizontalni scroll na mobitelu */
-  }
+  overflow-x: hidden;
+}
 
-/* timeline i kartice da se ne režu na mobitelu */
+@supports (min-height: 100dvh) {
+  html, body, #app {
+    min-height: 100dvh;
+  }
+}
+
 .timeline,
 .timeline li {
   overflow: hidden;
@@ -174,3 +180,10 @@ html, body, #app {
       padding: 1rem; 
     }
   }
+
+
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}

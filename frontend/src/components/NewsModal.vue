@@ -2,7 +2,7 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen" class="modal modal-open" @click.self="closeModal">
-        <div class="modal-box max-w-4xl w-full h-[90vh] p-0 relative flex flex-col overflow-hidden">
+        <div class="modal-box max-w-4xl w-full h-[90dvh] p-0 relative flex flex-col overflow-hidden" style="height: 90dvh; max-height: 90dvh;">
           <div
             class="flex-shrink-0 bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center shadow-sm backdrop-blur-lg bg-base-100/95 z-10">
             <div class="flex-1 min-w-0 sm:pr-4">
