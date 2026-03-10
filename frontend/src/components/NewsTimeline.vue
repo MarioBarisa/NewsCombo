@@ -23,7 +23,10 @@ const isModalOpen = ref(false)
 const activeFeedId = ref(null)
 const loading = computed(() => newsService.isLoading.value)
 const error = computed(() => newsService.error.value)
-const hasMore = computed(() => displayedNews.value.length < sortedNews.value.length)
+const hasMore = computed(() => {
+  const totalAvailable = sortedNews.value.length
+  return totalAvailable > 0 && displayedNews.value.length < totalAvailable
+})
 
 // FILTRIRAJ VIJESTI PO ODABRANOM FEED-U
 const filteredNews = computed(() => {
@@ -249,6 +252,9 @@ onMounted(async () => {
   if (fetchedNews && fetchedNews.length > 0) {
     allNews.value = fetchedNews;
     displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+  } else if (newsService.cachedNews.value.length > 0) {
+    allNews.value = newsService.cachedNews.value;
+    displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
   }
 
   setTimeout(() => {
@@ -349,7 +355,7 @@ onUnmounted(() => {
           </svg>
         </div>
         <div class="timeline-end pl-4 py-4 w-full">
-          <div class="w-full w-full">
+          <div class="w-full">
             <NewsCardCompact :news="news" @like="handleLike" @dislike="handleDislike" @open-modal="openModal" />
           </div>
         </div>

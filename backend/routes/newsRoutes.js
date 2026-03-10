@@ -774,7 +774,7 @@ router.post("/rss/fetch", async (req, res) => {
           return {
             url,
             success: true,
-            items: feed.items.slice(0, 10),
+            items: feed.items.slice(0, 20),
             title: feed.title,
             description: feed.description
           };

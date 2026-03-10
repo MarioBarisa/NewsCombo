@@ -188,20 +188,8 @@ export const useFeedsStore = defineStore('feeds', () => {
       const response = await newsApi.createGroup(newGroupData);
       
       await refreshStore();
-
-      // Dodaj u lokalno stanje
-      const newCategory = {
-        id: `cat_${response.data.noviId}`,
-        name: categoryName,
-        description: `Prilagođena kategorija: ${categoryName}`,
-        feeds: availableFeeds.value.filter(f => selectedFeedIds.includes(f.id)),
-        isDefault: false,
-        createdAt: new Date().toISOString(),
-        backendId: response.data.noviId
-      };
-      
-      categories.value.push(newCategory);
-      return newCategory;
+      const createdCategoryId = `cat_${response.data.noviId}`;
+      return categories.value.find(c => c.id === createdCategoryId) || null;
       
     } catch (error) {
       console.error("Greška pri dodavanju kategorije:", error);
@@ -238,12 +226,7 @@ export const useFeedsStore = defineStore('feeds', () => {
       await newsApi.updateGroup(backendId, updatedGroupData);
 
       await refreshStore();
-      
-      // Ažuriraj lokalno stanje
-      category.name = updatedName;
-      category.feeds = availableFeeds.value.filter(f => selectedFeedIds.includes(f.id));
-      
-      return category;
+      return categories.value.find(c => c.id === categoryId) || null;
       
     } catch (error) {
       console.error("Greška pri ažuriranju kategorije:", error);
@@ -283,12 +266,7 @@ export const useFeedsStore = defineStore('feeds', () => {
       console.log('Backend odgovor:', response.data);
 
       await refreshStore();
-      
-      // Odmah obriši iz lokalnog stanja TEK NAKON ( da nebi bilo conflicta ) uspješnog brisanja
-      const index = categories.value.findIndex(c => c.id === categoryId);
-      if (index !== -1) {
-        categories.value.splice(index, 1);
-      }
+
       if (selectedCategoryId.value === categoryId) {
         selectedCategoryId.value = 'all';
         localStorage.setItem('selectedCategoryId', 'all');

@@ -6,6 +6,7 @@ const error = ref(null);
 const cachedNews = ref([]);
 const newsBySource = ref({});
 const loadingProgress = ref(0);
+let inFlightFetchPromise = null;
 
 /*
 // više proxija
@@ -267,7 +268,7 @@ const parseRSSFeed = (xmlText, feed) => {
   : ['content\\:encoded', 'content', 'description', 'summary'];
     const guidSelectors = ['guid', 'id'];
 
-    return Array.from(items).slice(0, 12).map(item => {
+    return Array.from(items).slice(0, 20).map(item => {
       const title = getText(item, titleSelectors) || 'Bez naslova';
       
       // link extract ( posebno za Atom )
@@ -401,136 +402,142 @@ function convertBackendFeedToXML(feedData) {
 
 // paralelno učitavanje
 const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
-  if (isLoading.value) {
+  if (isLoading.value && inFlightFetchPromise) {
     console.log('Fetch se već izvodi');
-    return cachedNews.value;
+    return await inFlightFetchPromise;
   }
-  
-  isLoading.value = true;
-  error.value = null;
-  loadingProgress.value = 0;
-  
-  
-  const tempNewsBySource = {};
-  
-  console.log(`Fetch vijesti${forceRefresh ? ' (FORCE REFRESH)' : ''}...`);
-  
-  try {
-    const feedsStore = useFeedsStore();
-    if (feedsStore.availableFeeds.length === 0) {
-      await feedsStore.initializeStore();
-    }
-    
-    let feedsToFetch;
-    if (categoryId === 'all' || !categoryId) {
-      feedsToFetch = feedsStore.availableFeeds;
-    } else {
-      const category = feedsStore.categories.find(c => c.id === categoryId);
-      feedsToFetch = category ? category.feeds : [];
-    }
 
-    if (feedsToFetch.length === 0) {
-      console.warn('Nema feedova za dohvaćanje');
-      error.value = 'Nema konfiguriranih feedova';
-      return [];
-    }
-  
-    let successCount = 0;
-    let completedCount = 0;
-    const totalFeeds = feedsToFetch.length;
-    const startTime = performance.now();
-    
-    const allResults = [];
+  inFlightFetchPromise = (async () => {
+    isLoading.value = true;
+    error.value = null;
+    loadingProgress.value = 0;
 
-    const fetchSingleFeed = async (feed) => {
-      const feedStartTime = performance.now();
-      
-      try {
-        const xmlText = await fetchRSSFeed(feed.url, feed.name, 3, forceRefresh);
-        
-        if (!xmlText) {
-          console.warn(`${feed.name}: No response`);
-          return;
-        }
-        
-        const items = parseRSSFeed(xmlText, feed);
-        
-        if (items.length > 0) {
-          items.forEach(item => {
-            item.categoryId = categoryId || 'all';
-            item.sourceUrl = feed.url;
-            item.fetchedAt = new Date().toISOString();
-          });
-          
-          allResults.push(...items);
-          
-          tempNewsBySource[feed.name] = items;
-          
-          successCount++;
-          
-          const feedTime = Math.round(performance.now() - feedStartTime);
-          console.log(`${feed.name}: ${items.length} članaka (${feedTime}ms)`);
-        }
-      } catch (err) {
-        console.error(`${feed.name}:`, err.message);
-      } finally {
-        completedCount++;
-        loadingProgress.value = Math.round((completedCount / totalFeeds) * 100);
+    const tempNewsBySource = {};
+    const failedFeeds = [];
+
+    console.log(`Fetch vijesti${forceRefresh ? ' (FORCE REFRESH)' : ''}...`);
+
+    try {
+      const feedsStore = useFeedsStore();
+      if (feedsStore.availableFeeds.length === 0) {
+        await feedsStore.initializeStore();
       }
-    };
 
-    console.log(`📡 Učitavam ${totalFeeds} izvora paralelno...`);
-    
-    await Promise.allSettled(feedsToFetch.map(fetchSingleFeed));
-
-    if (allResults.length > 0) {
-      const seen = new Set();
-      const unique = allResults.filter(item => {
-        const key = item.guid || item.link;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
- 
-      unique.sort((a, b) => {
-        const dateA = new Date(b.pubDate || 0).getTime();
-        const dateB = new Date(a.pubDate || 0).getTime();
-        return dateA - dateB;
-      });
-
-      
-      const newCachedNews = unique.slice(0, 150);
-      
-      if (newCachedNews.length > 0) {
-        cachedNews.value = newCachedNews;
-        newsBySource.value = tempNewsBySource;
-        
-        setCachedData(cachedNews.value);
-        error.value = null;
+      let feedsToFetch;
+      if (categoryId === 'all' || !categoryId) {
+        feedsToFetch = feedsStore.availableFeeds;
+      } else {
+        const category = feedsStore.categories.find(c => c.id === categoryId);
+        feedsToFetch = category ? category.feeds : [];
       }
-      
-      const totalTime = Math.round(performance.now() - startTime);
-      console.log(`UKUPNO: ${cachedNews.value.length} vijesti iz ${successCount}/${totalFeeds} izvora (${totalTime}ms)`);
-    } else {
-      error.value = `Nije moguće učitati vijesti (0/${totalFeeds} izvora)`;
-      if (cachedNews.value.length === 0) {
+
+      if (feedsToFetch.length === 0) {
+        console.warn('Nema feedova za dohvaćanje');
+        error.value = 'Nema konfiguriranih feedova';
+        return [];
+      }
+
+      let successCount = 0;
+      let completedCount = 0;
+      const totalFeeds = feedsToFetch.length;
+      const startTime = performance.now();
+
+      const allResults = [];
+
+      const fetchSingleFeed = async (feed) => {
+        const feedStartTime = performance.now();
+
+        try {
+          const xmlText = await fetchRSSFeed(feed.url, feed.name, 3, forceRefresh);
+
+          if (!xmlText) {
+            failedFeeds.push(feed.name);
+            console.warn(`${feed.name}: No response`);
+            return;
+          }
+
+          const items = parseRSSFeed(xmlText, feed);
+
+          if (items.length > 0) {
+            items.forEach(item => {
+              item.categoryId = categoryId || 'all';
+              item.sourceUrl = feed.url;
+              item.fetchedAt = new Date().toISOString();
+            });
+
+            allResults.push(...items);
+            tempNewsBySource[feed.name] = items;
+            successCount++;
+
+            const feedTime = Math.round(performance.now() - feedStartTime);
+            console.log(`${feed.name}: ${items.length} članaka (${feedTime}ms)`);
+          } else {
+            failedFeeds.push(feed.name);
+          }
+        } catch (err) {
+          failedFeeds.push(feed.name);
+          console.error(`${feed.name}:`, err.message);
+        } finally {
+          completedCount++;
+          loadingProgress.value = Math.round((completedCount / totalFeeds) * 100);
+        }
+      };
+
+      console.log(`📡 Učitavam ${totalFeeds} izvora paralelno...`);
+
+      await Promise.allSettled(feedsToFetch.map(fetchSingleFeed));
+
+      if (allResults.length > 0) {
+        const seen = new Set();
+        const unique = allResults.filter(item => {
+          const key = item.guid || item.link;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        unique.sort((a, b) => {
+          const dateA = new Date(b.pubDate || 0).getTime();
+          const dateB = new Date(a.pubDate || 0).getTime();
+          return dateA - dateB;
+        });
+
+        const newCachedNews = unique.slice(0, 300);
+
+        if (newCachedNews.length > 0) {
+          cachedNews.value = newCachedNews;
+          newsBySource.value = tempNewsBySource;
+          setCachedData(cachedNews.value);
+          error.value = failedFeeds.length > 0
+            ? `Djelomično učitano (${successCount}/${totalFeeds} izvora)`
+            : null;
+        }
+
+        const totalTime = Math.round(performance.now() - startTime);
+        console.log(`UKUPNO: ${cachedNews.value.length} vijesti iz ${successCount}/${totalFeeds} izvora (${totalTime}ms)`);
+      } else {
+        error.value = `Nije moguće učitati vijesti (0/${totalFeeds} izvora)`;
+        if (cachedNews.value.length === 0) {
           cachedNews.value = getMockNews();
+        }
       }
-    }
 
-    return cachedNews.value;
-
-  } catch (err) {
-    console.error('Kritična greška:', err);
-    error.value = 'Greška pri dohvaćanju vijesti';
-    if (cachedNews.value.length === 0) {
-       cachedNews.value = getMockNews();
+      return cachedNews.value;
+    } catch (err) {
+      console.error('Kritična greška:', err);
+      error.value = 'Greška pri dohvaćanju vijesti';
+      if (cachedNews.value.length === 0) {
+        cachedNews.value = getMockNews();
+      }
+      return cachedNews.value;
+    } finally {
+      isLoading.value = false;
+      loadingProgress.value = 100;
+      inFlightFetchPromise = null;
     }
-    return cachedNews.value;
-  } finally {
-    isLoading.value = false;
-    loadingProgress.value = 100;
-  }
+  })();
+
+  return await inFlightFetchPromise;
 };
 
 

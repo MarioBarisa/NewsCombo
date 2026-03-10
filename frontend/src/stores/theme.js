@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
 export const useThemeStore = defineStore('theme', () => {
   // Svi DaisyUI themevi
@@ -41,38 +41,33 @@ export const useThemeStore = defineStore('theme', () => {
   // Trenutna tema - defaultno 'dark'
   const currentTheme = ref('dark')
 
-  // Funkcija za postavljanje teme
-  const setTheme = (themeName) => {
-    if (availableThemes.includes(themeName)) {
-      currentTheme.value = themeName
-      applyTheme(themeName)
-    }
-  }
-
   // Primjeni temu na HTML element
   const applyTheme = (themeName) => {
     document.documentElement.setAttribute('data-theme', themeName)
   }
 
-  // Inicijalizacija teme prilikom učitavanja aplikacije
-  const initTheme = () => {
-    applyTheme(currentTheme.value)
+  // Funkcija za postavljanje teme
+  const setTheme = (themeName) => {
+    if (availableThemes.includes(themeName)) {
+      currentTheme.value = themeName
+      localStorage.setItem('newscombo-theme', themeName)
+      applyTheme(themeName)
+    }
   }
 
-  // Watch za promjene teme
-  watch(currentTheme, (newTheme) => {
-    applyTheme(newTheme)
-  })
+  // Inicijalizacija teme prilikom učitavanja aplikacije
+  const initTheme = () => {
+    const savedTheme = localStorage.getItem('newscombo-theme')
+    if (savedTheme && availableThemes.includes(savedTheme)) {
+      currentTheme.value = savedTheme
+    }
+    applyTheme(currentTheme.value)
+  }
 
   return {
     availableThemes,
     currentTheme,
     setTheme,
     initTheme
-  }
-}, {
-  persist: {
-    key: 'newscombo-theme',
-    storage: localStorage,
   }
 })
