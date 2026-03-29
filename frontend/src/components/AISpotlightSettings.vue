@@ -168,12 +168,12 @@
                   </p>
                   
                   <div class="space-y-2">
-                    <a 
-                      v-for="(article, i) in section.topArticles" 
+                    <button
+                      v-for="(article, i) in section.topArticles"
                       :key="i"
-                      :href="article.link"
-                      target="_blank"
-                      class="flex items-start gap-2 text-sm link link-hover"
+                      type="button"
+                      @click="openArticleModal(article)"
+                      class="w-full flex items-start gap-2 text-sm link link-hover text-left"
                     >
                       <span class="badge badge-sm badge-outline">{{ i + 1 }}</span>
                       <span class="flex-1">
@@ -183,7 +183,7 @@
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -231,6 +231,12 @@
           </div>
         </div>
       </div>
+
+      <NewsModal
+        :news-item="selectedNews"
+        :is-open="isNewsModalOpen"
+        @close="closeArticleModal"
+      />
     </div>
   </template>
   
@@ -238,7 +244,8 @@
   import { ref, computed, onMounted } from 'vue';
   import axios from 'axios';
   import newsApi from '../api/newsApi.js';
-  
+  import NewsModal from './NewsModal.vue';
+
   import { API_URL as BASE_URL } from '../config.js';
   const API_URL = `${BASE_URL}/api`;  
   
@@ -249,7 +256,9 @@
   const selectedFeedId = ref('');
   const generationStatus = ref(null);
   const isGenerating = ref(false);
-  
+  const selectedNews = ref(null);
+  const isNewsModalOpen = ref(false);
+
  
   const selectedFeeds = computed(() => {
     const feedIds = aiGroup.value.feedIds || [];
@@ -394,7 +403,31 @@
       minute: '2-digit'
     });
   }
-  
+
+  function normalizeArticleForModal(article) {
+    return {
+      title: article?.title || 'Bez naslova',
+      link: article?.link || '#',
+      source: article?.source || 'AI sazetak',
+      description: article?.summary || article?.description || '',
+      contentSnippet: article?.summary || article?.description || '',
+      pubDate: article?.pubDate || null,
+      thumbnail: article?.thumbnail || null
+    };
+  }
+
+  function openArticleModal(article) {
+    selectedNews.value = normalizeArticleForModal(article);
+    isNewsModalOpen.value = true;
+  }
+
+  function closeArticleModal() {
+    isNewsModalOpen.value = false;
+    setTimeout(() => {
+      selectedNews.value = null;
+    }, 200);
+  }
+
   onMounted(() => {
     loadAIGroup();
     loadAllFeeds();

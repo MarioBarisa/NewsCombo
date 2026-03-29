@@ -45,6 +45,20 @@ const sortedNews = computed(() => {
   })
 })
 
+const syncDisplayedNews = (items, resetPage = false) => {
+  if (!Array.isArray(items)) return
+  allNews.value = items
+
+  if (resetPage) {
+    currentPage.value = 1
+    displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
+    return
+  }
+
+  const currentVisibleCount = displayedNews.value.length || itemsPerPage
+  displayedNews.value = sortedNews.value.slice(0, Math.max(itemsPerPage, currentVisibleCount))
+}
+
 const formatTime = (dateString) => {
   if (!dateString) return ''
   try {
@@ -106,13 +120,11 @@ const refreshNews = async () => {
   try {
     const categoryId = feedsStore.selectedCategoryId;
     console.log('Refresham vijesti za kategoriju:', categoryId);
-    const fetchedNews = await newsService.refreshNews(categoryId);
-    
+    const fetchedNews = await newsService.refreshNews(categoryId, activeFeedId.value);
+
     if (fetchedNews && fetchedNews.length > 0) {
       console.log('Učitano', fetchedNews.length, 'vijesti');
-      allNews.value = fetchedNews;
-      displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
-      currentPage.value = 1;
+      syncDisplayedNews(fetchedNews, true)
     } else {
       console.warn('Nema vijesti za ovu kategoriju');
       if (allNews.value.length === 0) {
@@ -231,6 +243,14 @@ watch(
   }
 );
 
+watch(
+  () => newsService.cachedNews.value,
+  (latestNews) => {
+    if (!Array.isArray(latestNews) || latestNews.length === 0) return
+    syncDisplayedNews(latestNews, false)
+  }
+)
+
 
 const setSortNewest = async () => {
   sortOrder.value = 'desc';
@@ -247,14 +267,12 @@ onMounted(async () => {
   await feedsStore.initializeStore()
   
   const categoryId = feedsStore.selectedCategoryId;
-  const fetchedNews = await newsService.fetchNews(categoryId);
-  
+  const fetchedNews = await newsService.fetchNews(categoryId, activeFeedId.value);
+
   if (fetchedNews && fetchedNews.length > 0) {
-    allNews.value = fetchedNews;
-    displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+    syncDisplayedNews(fetchedNews, true)
   } else if (newsService.cachedNews.value.length > 0) {
-    allNews.value = newsService.cachedNews.value;
-    displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+    syncDisplayedNews(newsService.cachedNews.value, true)
   }
 
   setTimeout(() => {
@@ -288,7 +306,7 @@ onUnmounted(() => {
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
       <h2 class="text-3xl font-bold">Najnovije vijesti</h2>
       <div class="flex flex-wrap gap-2">
-        <button @click="setSortNewest" :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'"class="btn btn-xs sm:btn-sm"
+        <button @click="setSortNewest" :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'" class="btn btn-xs sm:btn-sm"
           :disabled="loading">
           Najnovije
         </button>

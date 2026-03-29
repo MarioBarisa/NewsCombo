@@ -1,8 +1,13 @@
 <template>
     <div class="news-carousel bg-base-200 rounded-box p-4 sm:p-6">
       <h2 class="text-2xl font-bold mb-4">Najbitnije vijesti</h2>
-      
-      <div v-if="loading" class="flex justify-center py-8">
+
+      <div v-if="isBackgroundLoading" class="flex items-center gap-2 text-xs opacity-70 mb-3">
+        <span class="loading loading-spinner loading-xs"></span>
+        <span>Učitavam preostale izvore u pozadini ({{ loadingProgress }}%)</span>
+      </div>
+
+      <div v-if="loading && news.length === 0" class="flex justify-center py-8">
         <span class="loading loading-spinner loading-lg"></span>
       </div>
       
@@ -87,17 +92,23 @@
           </div>
         </div>
       </div>
+
+      <NewsModal
+        :news-item="selectedNews"
+        :is-open="isNewsModalOpen"
+        @close="closeNewsModal"
+      />
     </div>
   </template>
   
   <script>
-  import { ref, onMounted, onUnmounted, computed } from 'vue';
-  import { useRouter } from 'vue-router';
+  import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
   import { useNewsGlobal } from '../Services/NewsGlobal.js';
-  
+  import NewsModal from './NewsModal.vue';
+
   export default {
+    components: { NewsModal },
     setup() {
-      const router = useRouter();
       const newsService = useNewsGlobal();
       
       const news = ref([]);
@@ -105,22 +116,40 @@
       const currentNews = ref(null);
       const intervalId = ref(null);
       const retryCount = ref(0);
+      const selectedNews = ref(null);
+      const isNewsModalOpen = ref(false);
       const maxRetries = 3;
       
       const loading = computed(() => newsService.isLoading.value);
       const error = computed(() => newsService.error.value);
-  
+      const loadingProgress = computed(() => newsService.loadingProgress.value || 0);
+      const isBackgroundLoading = computed(() => loading.value && news.value.length > 0 && loadingProgress.value < 100);
+
+      const applyNews = (incomingNews) => {
+        if (!incomingNews || incomingNews.length === 0) return;
+        const previousLink = currentNews.value?.link;
+        news.value = incomingNews.slice(0, 7);
+
+        if (!previousLink) {
+          currentIndex.value = 0;
+          currentNews.value = news.value[0];
+          startCarousel();
+          return;
+        }
+
+        const sameItemIndex = news.value.findIndex(item => item.link === previousLink);
+        currentIndex.value = sameItemIndex >= 0 ? sameItemIndex : 0;
+        currentNews.value = news.value[currentIndex.value] || news.value[0];
+      };
+
       const fetchNews = async () => {
   try {
     retryCount.value++;
     const fetchedNews = await newsService.fetchNews();
 
     if (fetchedNews && fetchedNews.length > 0) {
-      // Limit to the 7 most recent news
-      news.value = fetchedNews.slice(0, 7);
-      currentIndex.value = 0;
-      currentNews.value = news.value[0];
-      retryCount.value = 0; 
+      applyNews(fetchedNews);
+      retryCount.value = 0;
       startCarousel();
     } else if (retryCount.value < maxRetries) {
       setTimeout(() => fetchNews(), 2000 * retryCount.value);
@@ -157,12 +186,15 @@
       };
   
       const openNewsDetail = (newsItem) => {
-        if (newsItem.link && newsItem.link !== '#') {
-          window.open(newsItem.link, '_blank', 'noopener,noreferrer');
-        } else {
-          localStorage.setItem('selectedNews', JSON.stringify(newsItem));
-          router.push('/news/' + encodeURIComponent(newsItem.title.substring(0, 50)));
-        }
+        selectedNews.value = newsItem;
+        isNewsModalOpen.value = true;
+      };
+
+      const closeNewsModal = () => {
+        isNewsModalOpen.value = false;
+        setTimeout(() => {
+          selectedNews.value = null;
+        }, 200);
       };
   
       const stripHtml = (html) => {
@@ -209,7 +241,14 @@
       onMounted(() => {
         fetchNews();
       });
-  
+
+      watch(
+        () => newsService.cachedNews.value,
+        (latestNews) => {
+          applyNews(latestNews);
+        }
+      );
+
       onUnmounted(() => {
         if (intervalId.value) {
           clearInterval(intervalId.value);
@@ -222,7 +261,12 @@
         currentNews,
         currentIndex,
         news,
+        selectedNews,
+        isNewsModalOpen,
+        loadingProgress,
+        isBackgroundLoading,
         openNewsDetail,
+        closeNewsModal,
         stripHtml,
         formatDate,
         goToSlide,

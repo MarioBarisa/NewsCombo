@@ -262,10 +262,16 @@ const getTimestampOrOldest = (dateStr) => {
   return Number.isNaN(ts) ? Number.NEGATIVE_INFINITY : ts;
 };
 
+const getSourceFavicon = (domain) => {
+  if (!domain) return null;
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+};
+
 
 const parseRSSFeed = (xmlText, feed) => {
   try {
     if (xmlText && xmlText.isBackendFormat) {
+      const feedFallbackImage = xmlText.feedImage || getSourceFavicon(feed.domain);
       return xmlText.items.map(item => ({
         title: item.title || 'Bez naslova',
         description: cleanDescription(getBestContent(item)),
@@ -275,7 +281,7 @@ const parseRSSFeed = (xmlText, feed) => {
         domain: feed.domain || 'unknown',
         category: feed.category || 'general',
         feedId: feed.id,
-        thumbnail: extractImageFromItem(item), 
+        thumbnail: extractImageFromItem(item) || item.feedImage || feedFallbackImage,
         guid: item.guid || item.id || item.link || `${feed.name}-${Date.now()}-${Math.random()}`
       }));
     }
@@ -323,7 +329,7 @@ const parseRSSFeed = (xmlText, feed) => {
       const rawContent = getText(item, contentSelectors) || '';
       const guid = getText(item, guidSelectors) || link || `${feed.name}-${Date.now()}-${Math.random()}`;
       
-      const thumbnail = extractThumbnail(item, rawContent);
+      const thumbnail = extractThumbnail(item, rawContent) || getSourceFavicon(feed.domain);
       const description = cleanDescription(rawContent);
 
       return {
@@ -391,10 +397,11 @@ function convertBackendFeedToXML(feedData) {
     guid: item.guid || item.link,
     enclosure: item.enclosure,
     'media:thumbnail': item['media:thumbnail'],
-    'media:content': item['media:content']
+    'media:content': item['media:content'],
+    feedImage: feedData.feedImage || null
   }));
 
-  return { items, isBackendFormat: true };
+  return { items, isBackendFormat: true, feedImage: feedData.feedImage || null };
 }
 
 
@@ -426,7 +433,7 @@ function convertBackendFeedToXML(feedData) {
     return `${url}${separator}_cb=${Date.now()}_${Math.random().toString(36).substring(7)}`;
   };
 
-  const fetchNews = async (categoryId = null) => {
+  const fetchNews = async (categoryId = null, priorityFeedId = null) => {
     const cached = getCachedData();
     if (cached && cached.length > 0) {
       console.log(`fetched vijesti -> ${cached.length} `);
@@ -435,16 +442,22 @@ function convertBackendFeedToXML(feedData) {
     }
     
     console.log('Nema cachea, dohvaćam fresh');
-    return await fetchNewsFresh(categoryId, false);
+    return await fetchNewsFresh(categoryId, false, priorityFeedId);
   };
   
 
 // paralelno učitavanje
-const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
+const fetchNewsFresh = async (categoryId = null, forceRefresh = false, priorityFeedId = null) => {
   if (isLoading.value && inFlightFetchPromise) {
     console.log('Fetch se već izvodi');
-    return await inFlightFetchPromise;
+    return cachedNews.value;
   }
+
+  let resolveInitialBatch;
+  let initialBatchResolved = false;
+  const initialBatchPromise = new Promise(resolve => {
+    resolveInitialBatch = resolve;
+  });
 
   inFlightFetchPromise = (async () => {
     isLoading.value = true;
@@ -482,6 +495,25 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
       const startTime = performance.now();
 
       const allResults = [];
+
+      const publishCurrentResults = () => {
+        if (allResults.length === 0) return;
+
+        const seen = new Set();
+        const unique = allResults.filter(item => {
+          const key = item.guid || item.link;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        unique.sort((a, b) => getTimestampOrOldest(b.pubDate) - getTimestampOrOldest(a.pubDate));
+
+        const newCachedNews = unique.slice(0, 300);
+        cachedNews.value = newCachedNews;
+        newsBySource.value = { ...tempNewsBySource };
+        setCachedData(cachedNews.value);
+      };
 
       const fetchSingleFeed = async (feed) => {
         const feedStartTime = performance.now();
@@ -522,31 +554,34 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
         }
       };
 
-      console.log(`📡 Učitavam ${totalFeeds} izvora paralelno...`);
+      const priorityFeed =
+        feedsToFetch.find(feed => feed.id === priorityFeedId) || feedsToFetch[0] || null;
+      const remainingFeeds = priorityFeed
+        ? feedsToFetch.filter(feed => feed.id !== priorityFeed.id)
+        : feedsToFetch;
 
-      await Promise.allSettled(feedsToFetch.map(fetchSingleFeed));
+      if (priorityFeed) {
+        console.log(`⚡ Prioritetno učitavam ${priorityFeed.name}`);
+        await fetchSingleFeed(priorityFeed);
+        if (allResults.length > 0) {
+          publishCurrentResults();
+        }
+      }
+
+      if (!initialBatchResolved) {
+        initialBatchResolved = true;
+        resolveInitialBatch(cachedNews.value);
+      }
+
+      console.log(`📡 Učitavam ${remainingFeeds.length} preostalih izvora paralelno...`);
+
+      await Promise.allSettled(remainingFeeds.map(fetchSingleFeed));
 
       if (allResults.length > 0) {
-        const seen = new Set();
-        const unique = allResults.filter(item => {
-          const key = item.guid || item.link;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        unique.sort((a, b) => getTimestampOrOldest(b.pubDate) - getTimestampOrOldest(a.pubDate));
-
-        const newCachedNews = unique.slice(0, 300);
-
-        if (newCachedNews.length > 0) {
-          cachedNews.value = newCachedNews;
-          newsBySource.value = tempNewsBySource;
-          setCachedData(cachedNews.value);
-          error.value = failedFeeds.length > 0
-            ? `Djelomično učitano (${successCount}/${totalFeeds} izvora)`
-            : null;
-        }
+        publishCurrentResults();
+        error.value = failedFeeds.length > 0
+          ? `Djelomično učitano (${successCount}/${totalFeeds} izvora)`
+          : null;
 
         const totalTime = Math.round(performance.now() - startTime);
         console.log(`UKUPNO: ${cachedNews.value.length} vijesti iz ${successCount}/${totalFeeds} izvora (${totalTime}ms)`);
@@ -566,13 +601,17 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
       }
       return cachedNews.value;
     } finally {
+      if (!initialBatchResolved) {
+        initialBatchResolved = true;
+        resolveInitialBatch(cachedNews.value);
+      }
       isLoading.value = false;
       loadingProgress.value = 100;
       inFlightFetchPromise = null;
     }
   })();
 
-  return await inFlightFetchPromise;
+  return await initialBatchPromise;
 };
 
 
@@ -584,7 +623,7 @@ const getNewsByCategory = (category) => {
   return cachedNews.value.filter(news => news.category === category);
 };
 
-const refreshNews = async (categoryId = null) => {
+const refreshNews = async (categoryId = null, priorityFeedId = null) => {
   console.log('REFRESH zapocet');
   
   // brisanje local storeg-a
@@ -594,7 +633,7 @@ const refreshNews = async (categoryId = null) => {
   cachedNews.value = [];
   newsBySource.value = {};
   
-  return await fetchNewsFresh(categoryId, true);
+  return await fetchNewsFresh(categoryId, true, priorityFeedId);
 };
 
 

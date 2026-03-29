@@ -35,6 +35,23 @@ function extractImageUrl(item) {
   return null;
 }
 
+function extractFeedImage(feed) {
+  if (!feed) return null;
+
+  if (typeof feed.logo === 'string' && feed.logo) return feed.logo;
+  if (typeof feed.icon === 'string' && feed.icon) return feed.icon;
+
+  const image = feed.image;
+  if (!image) return null;
+  if (typeof image === 'string') return image;
+
+  const imageUrl = image.url;
+  if (typeof imageUrl === 'string' && imageUrl) return imageUrl;
+  if (Array.isArray(imageUrl) && imageUrl[0]) return imageUrl[0];
+
+  return null;
+}
+
 export default function createNewsRoutes(db) {
   const router = express.Router();
 
@@ -776,7 +793,8 @@ router.post("/rss/fetch", async (req, res) => {
             success: true,
             items: feed.items.slice(0, 20),
             title: feed.title,
-            description: feed.description
+            description: feed.description,
+            feedImage: extractFeedImage(feed)
           };
         } catch (error) {
           return {
