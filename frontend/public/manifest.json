@@ -3,6 +3,8 @@
     "short_name": "NewsCombo",
     "description": "Personalizirani RSS feed agregator",
     "start_url": "/",
+    "author": "Mario Bariša - barisa.me",
+    "keywords": ["news", "vijesti", "RSS", "aggregator", "chronological"],
     "display": "standalone",
     "background_color": "#1a1a1a",
     "theme_color": "#1a1a1a",

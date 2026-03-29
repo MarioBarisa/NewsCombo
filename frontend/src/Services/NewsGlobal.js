@@ -214,11 +214,52 @@ const getBestContent = (item) => {
   return description || content; 
 };
 
-//helper za datume
+// helper za datume (Safari-friendly)
 const parseDateSafe = (dateStr) => {
-  if (!dateStr) return new Date().toISOString();
-  const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  if (!dateStr || typeof dateStr !== 'string') return null;
+
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+
+  const normalized = trimmed
+    // Neki feedovi šalju "... 12:00:00 Z" što Safari često ne parsira dobro.
+    .replace(/\s+Z$/i, ' GMT')
+    // Normalizacija timezone formata +0000 -> +00:00
+    .replace(/\s([+-]\d{2})(\d{2})$/, ' $1:$2');
+
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  // Fallback za RFC822-like format: "Sun, 29 Mar 2026 12:00:00 Z"
+  const match = trimmed.match(/^[A-Za-z]{3},\s(\d{1,2})\s([A-Za-z]{3})\s(\d{4})\s(\d{2}):(\d{2})(?::(\d{2}))?\sZ$/);
+  if (match) {
+    const months = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+    };
+    const month = months[match[2]];
+    if (month !== undefined) {
+      const date = new Date(Date.UTC(
+        Number(match[3]),
+        month,
+        Number(match[1]),
+        Number(match[4]),
+        Number(match[5]),
+        Number(match[6] || '0')
+      ));
+      if (!Number.isNaN(date.getTime())) return date.toISOString();
+    }
+  }
+
+  return null;
+};
+
+const getTimestampOrOldest = (dateStr) => {
+  if (!dateStr) return Number.NEGATIVE_INFINITY;
+  const ts = new Date(dateStr).getTime();
+  return Number.isNaN(ts) ? Number.NEGATIVE_INFINITY : ts;
 };
 
 
@@ -278,7 +319,7 @@ const parseRSSFeed = (xmlText, feed) => {
       }
       link = link || '#';
       
-      const pubDate = getText(item, dateSelectors) || new Date().toISOString();
+      const pubDate = parseDateSafe(getText(item, dateSelectors));
       const rawContent = getText(item, contentSelectors) || '';
       const guid = getText(item, guidSelectors) || link || `${feed.name}-${Date.now()}-${Math.random()}`;
       
@@ -373,9 +414,7 @@ function convertBackendFeedToXML(feedData) {
   });
   
   const unique = Array.from(uniqueMap.values());
-  unique.sort((a, b) => {
-    return new Date(b.pubDate || 0) - new Date(a.pubDate || 0);
-  });
+  unique.sort((a, b) => getTimestampOrOldest(b.pubDate) - getTimestampOrOldest(a.pubDate));
   
   cachedNews.value = unique.slice(0, 150);
   };
@@ -496,11 +535,7 @@ const fetchNewsFresh = async (categoryId = null, forceRefresh = false) => {
           return true;
         });
 
-        unique.sort((a, b) => {
-          const dateA = new Date(b.pubDate || 0).getTime();
-          const dateB = new Date(a.pubDate || 0).getTime();
-          return dateA - dateB;
-        });
+        unique.sort((a, b) => getTimestampOrOldest(b.pubDate) - getTimestampOrOldest(a.pubDate));
 
         const newCachedNews = unique.slice(0, 300);
 

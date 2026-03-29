@@ -40,6 +40,24 @@ watch(() => feedsStore.selectedCategoryId, () => {
 
 const emit = defineEmits(['feed-changed']);
 
+const getFeedDomain = (feed) => {
+  if (feed?.domain) return feed.domain;
+  try {
+    return new URL(feed?.url || '').hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
+};
+
+const getFaviconUrl = (feed) => {
+  const domain = getFeedDomain(feed);
+  return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64` : '';
+};
+
+const onFaviconError = (event) => {
+  event.target.style.display = 'none';
+};
+
 onMounted(() => {
   feedsStore.loadFromLocalStorage();
 });
@@ -48,29 +66,40 @@ onMounted(() => {
 <template>
   <div v-if="categoryFeeds.length > 0" class="feed-switcher">
     <!-- Desktop verzija -->
-    <div class="hidden md:flex items-center gap-2 flex-wrap justify-center mb-4">
+    <div class="hidden md:block mb-4">
       <button
         @click="selectAllFeeds"
         :class="activeFeedId === null ? 'btn-primary' : 'btn-ghost'"
-        class="btn btn-xs"
+        class="btn btn-xs mb-3"
         title="Prikaži sve feedove iz kategorije"
       > 
         <span class="text-xs">📰 Svi ({{ categoryFeeds.length }})</span>
       </button>
 
-      <div class="divider divider-horizontal mx-0"></div>
-
-      <button
-        v-for="feed in categoryFeeds"
-        :key="feed.id"
-        @click="selectFeed(feed.id)"
-        :class="activeFeedId === feed.id ? 'btn-secondary' : 'btn-ghost'"
-        class="btn btn-xs"
-        :title="`Prikaži samo vijesti iz ${feed.name}`"
-      >
-        <span class="text-xs">{{ feed.name }}</span>
-        <span v-if="feed.isCustom" class="badge badge-xs">custom</span>
-      </button>
+      <div class="desktop-source-grid">
+        <button
+          v-for="feed in categoryFeeds"
+          :key="feed.id"
+          @click="selectFeed(feed.id)"
+          :class="activeFeedId === feed.id ? 'btn-secondary' : 'btn-ghost'"
+          class="btn btn-sm justify-start normal-case h-auto min-h-0 py-2 px-3"
+          :title="`Prikaži samo vijesti iz ${feed.name}`"
+        >
+          <img
+            v-if="getFaviconUrl(feed)"
+            :src="getFaviconUrl(feed)"
+            :alt="`${feed.name} favicon`"
+            class="w-4 h-4 rounded-sm flex-shrink-0"
+            loading="lazy"
+            @error="onFaviconError"
+          >
+          <span class="text-left leading-tight flex-1 min-w-0">
+            <span class="block text-xs font-medium truncate">{{ feed.name }}</span>
+            <span class="block text-[10px] opacity-60 truncate">{{ getFeedDomain(feed) }}</span>
+          </span>
+          <span v-if="feed.isCustom" class="badge badge-xs ml-1">custom</span>
+        </button>
+      </div>
     </div>
 
     <!-- Mobile verzija -->
@@ -114,6 +143,15 @@ onMounted(() => {
   padding: 0.5rem;
   background: var(--fallback-b2, oklch(var(--b2) / 1));
   border-radius: 0.5rem;
+}
+
+.desktop-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 .divider-horizontal {

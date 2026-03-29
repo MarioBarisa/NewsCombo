@@ -39,9 +39,9 @@ const filteredNews = computed(() => {
 const sortedNews = computed(() => {
   const sorted = [...filteredNews.value]
   return sorted.sort((a, b) => {
-    const dateA = new Date(a.pubDate || 0)
-    const dateB = new Date(b.pubDate || 0)
-    return sortOrder.value === 'desc' ? dateB - dateA : dateA - dateB
+    const tsA = Number.isNaN(new Date(a.pubDate).getTime()) ? Number.NEGATIVE_INFINITY : new Date(a.pubDate).getTime()
+    const tsB = Number.isNaN(new Date(b.pubDate).getTime()) ? Number.NEGATIVE_INFINITY : new Date(b.pubDate).getTime()
+    return sortOrder.value === 'desc' ? tsB - tsA : tsA - tsB
   })
 })
 
