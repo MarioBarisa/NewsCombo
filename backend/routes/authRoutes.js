@@ -19,7 +19,7 @@ export default function createAuthRoutes(db) {
       const user = { email, password: hashedPassword, name, createdAt: new Date() };
       await users.insertOne(user);
 
-      const token = jwt.sign({ userId: user._id, email }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user._id, email }, JWT_SECRET, { expiresIn: '30d' });
       res.json({ token, user: { email, name } });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -36,7 +36,7 @@ export default function createAuthRoutes(db) {
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) return res.status(401).json({ error: 'Pogrešni podaci' });
 
-      const token = jwt.sign({ userId: user._id, email }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user._id, email }, JWT_SECRET, { expiresIn: '30d' });
       res.json({ token, user: { email, name: user.name } });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -51,7 +51,10 @@ export default function createAuthRoutes(db) {
 
       const decoded = jwt.verify(token, JWT_SECRET);
       const user = await users.findOne({ email: decoded.email }, { projection: { password: 0 } });
-      res.json(user);
+      if (!user) return res.status(404).json({ error: 'Korisnik nije pronađen' });
+
+      const refreshedToken = jwt.sign({ userId: decoded.userId, email: decoded.email }, JWT_SECRET, { expiresIn: '30d' });
+      res.json({ user, token: refreshedToken });
     } catch (error) {
       res.status(401).json({ error: 'Nevažeći token' });
     }
@@ -101,7 +104,7 @@ export default function createAuthRoutes(db) {
       // Ako se email change-ao, vrati novi token
       const newEmail = updates.email || decoded.email;
       const newToken = updates.email 
-        ? jwt.sign({ userId: user._id, email: newEmail }, JWT_SECRET, { expiresIn: '7d' })
+        ? jwt.sign({ userId: user._id, email: newEmail }, JWT_SECRET, { expiresIn: '30d' })
         : null;
 
       const updatedUser = await users.findOne({ email: newEmail }, { projection: { password: 0 } });

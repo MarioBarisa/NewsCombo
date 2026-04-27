@@ -10,16 +10,19 @@
         NewsCombo
       </router-link>
     </div>
-    <div class="dropdown dropdown-end ml-auto" ref="dropdownContainer">
-      <div 
+    <div :class="['dropdown dropdown-end ml-auto', { 'dropdown-open': isDropdownOpen }]" ref="dropdownContainer">
+      <div
         tabindex="0" 
         role="button" 
         class="btn btn-ghost btn-circle avatar"
         ref="dropdownTrigger"
+        @click="toggleDropdown"
       >
         <div class="w-10 sm:w-12 rounded-full">
           <img alt="Profilna slika"
-            :src="authStore.user?.profilePicture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(authStore.user?.name || 'U')" />
+            :src="profileImageSrc"
+            @error="handleAvatarError"
+          />
         </div>
       </div>
       <ul 
@@ -28,22 +31,22 @@
         ref="dropdownMenu"
       >       
         <li>
-          <RouterLink to="/settings/feeds" class="justify-between" @click="closeDropdown">
+          <RouterLink to="/settings/feeds" class="justify-between" @click="handleMenuClick">
             Postavke feed-ova
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/bookmarks" class="justify-between" @click="closeDropdown">
+          <RouterLink to="/bookmarks" class="justify-between" @click="handleMenuClick">
             Spremljeni članci
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/profile" class="justify-between" @click="closeDropdown">
+          <RouterLink to="/profile" class="justify-between" @click="handleMenuClick">
             Profil
           </RouterLink>
         </li>
         <li>
-          <RouterLink to="/settings" class="justify-between" @click="closeDropdown">
+          <RouterLink to="/settings" class="justify-between" @click="handleMenuClick">
             Postavke
           </RouterLink>
         </li>
@@ -56,23 +59,52 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useAuthStore } from '../stores/authStore';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 
 const authStore = useAuthStore();
 const router = useRouter();
-
+const route = useRoute();
+let removeAfterEach = null;
 
 const dropdownContainer = ref(null);
 const dropdownTrigger = ref(null);
 const dropdownMenu = ref(null);
+const isDropdownOpen = ref(false);
+
+const imageNonce = ref(Date.now());
+const imageRetryCount = ref(0);
+const useFallbackAvatar = ref(false);
+
+const fallbackAvatarUrl = computed(() => {
+  const name = authStore.user?.name || 'U';
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`;
+});
+
+const profileImageSrc = computed(() => {
+  if (useFallbackAvatar.value || !authStore.user?.profilePicture) return fallbackAvatarUrl.value;
+  const separator = authStore.user.profilePicture.includes('?') ? '&' : '?';
+  return `${authStore.user.profilePicture}${separator}v=${imageNonce.value}`;
+});
 
 
 const closeDropdown = () => {
-  if (dropdownTrigger.value) {
-    dropdownTrigger.value.blur(); 
+  isDropdownOpen.value = false;
+  const activeElement = document.activeElement;
+  if (dropdownContainer.value && activeElement && dropdownContainer.value.contains(activeElement)) {
+    activeElement.blur();
+  } else if (dropdownTrigger.value) {
+    dropdownTrigger.value.blur();
   }
+};
+
+const toggleDropdown = () => {
+  isDropdownOpen.value = !isDropdownOpen.value;
+};
+
+const handleMenuClick = () => {
+  closeDropdown();
 };
 
 
@@ -80,6 +112,21 @@ const handleScroll = () => {
   closeDropdown();
 };
 
+const handleOutsideClick = (event) => {
+  if (!dropdownContainer.value) return;
+  if (!dropdownContainer.value.contains(event.target)) {
+    closeDropdown();
+  }
+};
+
+const handleAvatarError = () => {
+  if (imageRetryCount.value < 1) {
+    imageRetryCount.value += 1;
+    imageNonce.value = Date.now();
+    return;
+  }
+  useFallbackAvatar.value = true;
+};
 
 function handleLogout() {
   closeDropdown();
@@ -89,13 +136,44 @@ function handleLogout() {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true });
-
   window.addEventListener('touchmove', handleScroll, { passive: true });
+  document.addEventListener('pointerdown', handleOutsideClick, { passive: true });
+  document.addEventListener('click', handleOutsideClick, true);
+  document.addEventListener('touchstart', handleOutsideClick, true);
+  document.addEventListener('scroll', handleScroll, true);
+  removeAfterEach = router.afterEach(() => {
+    closeDropdown();
+  });
 });
+
+watch(
+  () => authStore.user?.profilePicture,
+  () => {
+    imageNonce.value = Date.now();
+    imageRetryCount.value = 0;
+    useFallbackAvatar.value = false;
+  },
+  { immediate: true }
+);
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeDropdown();
+  }
+);
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
   window.removeEventListener('touchmove', handleScroll);
+  document.removeEventListener('pointerdown', handleOutsideClick);
+  document.removeEventListener('click', handleOutsideClick, true);
+  document.removeEventListener('touchstart', handleOutsideClick, true);
+  document.removeEventListener('scroll', handleScroll, true);
+  if (removeAfterEach) {
+    removeAfterEach();
+    removeAfterEach = null;
+  }
 });
 </script>
 

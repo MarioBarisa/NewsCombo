@@ -2,9 +2,12 @@
     <div class="news-carousel bg-base-200 rounded-box p-4 sm:p-6">
       <h2 class="text-2xl font-bold mb-4">Najbitnije vijesti</h2>
 
-      <div v-if="isBackgroundLoading" class="flex items-center gap-2 text-xs opacity-70 mb-3">
-        <span class="loading loading-spinner loading-xs"></span>
-        <span>Učitavam preostale izvore u pozadini ({{ loadingProgress }}%)</span>
+      <div v-if="isBackgroundLoading" class="mb-4 rounded-lg bg-base-100/40 px-3 py-2">
+        <div class="flex items-center gap-2 text-xs opacity-80">
+          <span class="loading loading-spinner loading-xs"></span>
+          <span>Učitavam preostale izvore u pozadini ({{ loadingProgress }}%)</span>
+        </div>
+        <progress class="progress progress-primary w-full h-1.5 mt-2" :value="loadingProgress" max="100"></progress>
       </div>
 
       <div v-if="loading && news.length === 0" class="flex justify-center py-8">
@@ -36,9 +39,9 @@
   
         <div 
           @click="openNewsDetail(currentNews)"
-          class="cursor-pointer hover:bg-base-300 rounded-box p-3 sm:p-4 transition-all duration-300 mx-0 sm:mx-8"
+          class="cursor-pointer hover:bg-base-300 rounded-box p-3 sm:p-4 transition-all duration-300 mx-0 sm:mx-8 overflow-hidden"
         >
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center">
             <div v-if="currentNews.enclosure?.link || currentNews.thumbnail" class="shrink-0">
               <img 
                 :src="currentNews.enclosure?.link || currentNews.thumbnail" 
@@ -47,9 +50,9 @@
                 @error="onImageError"
               />
             </div>
-            <div class="flex-1">
-              <h3 class="font-bold text-lg mb-2 line-clamp-2">{{ currentNews.title }}</h3>
-              <p class="text-sm opacity-70 mb-2 line-clamp-3">{{ stripHtml(currentNews.description) }}</p>
+            <div class="flex-1 min-w-0 w-full">
+              <h3 class="font-bold text-lg mb-1 truncate" :title="currentNews.title">{{ currentNews.title }}</h3>
+              <p class="text-sm opacity-70 mb-2 truncate" :title="stripHtml(currentNews.description)">{{ stripHtml(currentNews.description) }}</p>
               <div class="flex justify-between items-center text-xs opacity-60">
                 <span class="badge badge-sm badge-outline w-fit">{{ currentNews.source }}</span>
                 <span class="whitespace-nowrap">{{ formatDate(currentNews.pubDate) }}</span>
@@ -60,7 +63,7 @@
         
         <!-- indikacijski krugovi za galeriju -->
         <div class="flex justify-center mt-4 gap-2" v-if="news.length > 1">
-          <div 
+          <div
             v-for="(_, index) in news" 
             :key="index"
             :class="['w-2 h-2 rounded-full transition-all duration-300 cursor-pointer', index === currentIndex ? 'bg-primary' : 'bg-base-content opacity-30']"
@@ -79,7 +82,7 @@
           <button @click="loadMockNews" class="btn btn-sm btn-secondary">Prikaži demo vijesti</button>
         </div>
       </div>
-      
+
       <div v-else class="text-center py-8 opacity-70">
         <div class="flex flex-col items-center gap-4">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,11 +122,16 @@
       const selectedNews = ref(null);
       const isNewsModalOpen = ref(false);
       const maxRetries = 3;
-      
+
       const loading = computed(() => newsService.isLoading.value);
       const error = computed(() => newsService.error.value);
       const loadingProgress = computed(() => newsService.loadingProgress.value || 0);
       const isBackgroundLoading = computed(() => loading.value && news.value.length > 0 && loadingProgress.value < 100);
+
+      const isAllCategoryNews = (items) => {
+        if (!Array.isArray(items) || items.length === 0) return false;
+        return items.every(item => (item.categoryId || 'all') === 'all');
+      };
 
       const applyNews = (incomingNews) => {
         if (!incomingNews || incomingNews.length === 0) return;
@@ -143,29 +151,29 @@
       };
 
       const fetchNews = async () => {
-  try {
-    retryCount.value++;
-    const fetchedNews = await newsService.fetchNews();
+      try {
+        retryCount.value++;
+        const fetchedNews = await newsService.fetchNews('all');
 
-    if (fetchedNews && fetchedNews.length > 0) {
-      applyNews(fetchedNews);
-      retryCount.value = 0;
-      startCarousel();
-    } else if (retryCount.value < maxRetries) {
-      setTimeout(() => fetchNews(), 2000 * retryCount.value);
-    } else {
-      loadMockNews();
-    }
-  } catch (err) {
-    console.error('Error fetching news:', err);
-    if (retryCount.value < maxRetries) {
-      setTimeout(() => fetchNews(), 2000 * retryCount.value);
-    } else {
-      loadMockNews();
-    }
-  }
-};
-  
+        if (fetchedNews && fetchedNews.length > 0) {
+          applyNews(fetchedNews);
+          retryCount.value = 0;
+          startCarousel();
+        } else if (retryCount.value < maxRetries) {
+          setTimeout(() => fetchNews(), 2000 * retryCount.value);
+        } else {
+          loadMockNews();
+        }
+      } catch (err) {
+        console.error('Error fetching news:', err);
+        if (retryCount.value < maxRetries) {
+          setTimeout(() => fetchNews(), 2000 * retryCount.value);
+        } else {
+          loadMockNews();
+        }
+      }
+    };
+
       const loadMockNews = () => {
         const mockNews = newsService.getMockNews();
         news.value = mockNews;
@@ -245,7 +253,9 @@
       watch(
         () => newsService.cachedNews.value,
         (latestNews) => {
-          applyNews(latestNews);
+          if (isAllCategoryNews(latestNews)) {
+            applyNews(latestNews);
+          }
         }
       );
 

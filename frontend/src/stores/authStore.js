@@ -45,8 +45,16 @@ export const useAuthStore = defineStore('auth', {
       const res = await fetch(`${API_URL}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${this.token}` }
       });
-      if (res.ok) this.user = await res.json();
-      else this.logout();
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.token) {
+          this.token = data.token;
+          localStorage.setItem('token', data.token);
+        }
+        this.user = data?.user || data;
+      } else {
+        this.logout();
+      }
     },
 
     logout() {

@@ -45,6 +45,16 @@ export const useFeedsStore = defineStore('feeds', () => {
 
   const availableFeeds = ref([]);
 
+  const normalizeDomain = (value) => {
+    if (!value) return '';
+    try {
+      const url = value.includes('://') ? value : `https://${value}`;
+      return new URL(url).hostname.replace('www.', '');
+    } catch {
+      return '';
+    }
+  };
+
   //funckija za učitavanje feedova sa backenda
   const loadFeedsFromBackend = async () => {
     isLoading.value = true;
@@ -56,7 +66,7 @@ export const useFeedsStore = defineStore('feeds', () => {
           id: `feed_${feed.id}`,
           name: feed.naziv,
           url: feed.url,
-          domain: new URL(feed.url).hostname.replace('www.', ''),
+          domain: normalizeDomain(feed.url || feed.domain),
           category: feed.kategorija || 'other',
           isCustom: feed.isCustom || false,
         })

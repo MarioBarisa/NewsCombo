@@ -207,7 +207,7 @@ function closeArticleModal() {
       </div>
 
       <div v-else>
-        <div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-xl mb-8">
+        <div class="card ai-summary-card shadow-xl mb-8">
           <div class="card-body">
             <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div class="flex items-center gap-4">
@@ -218,21 +218,13 @@ function closeArticleModal() {
                     {{ aiGroup.feedIds?.length || 0 }} RSS feedova
                   </p>
                   <hr class="my-2 opacity-30">
-                  <p class="text-xs opacity-80">AI može pogriješiti. Uvijek provjeri izvore.</p>
-                  <p class="text-xs opacity-80 mt-1">Korištenjem ove funkcije prihvaćaš Google Gemini Uvjete korištenja.</p>
+                  <p class="text-xs text-base-content/80">AI može pogriješiti. Uvijek provjeri izvore.</p>
+                  <p class="text-xs text-base-content/80 mt-1">Korištenjem ove funkcije prihvaćaš Google Gemini Uvjete korištenja.</p>
                 </div>
               </div>
 
               <div class="flex gap-2">
-                <button @click="loadSummaries" class="btn btn-neutral btn-sm" :disabled="isGenerating">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-
-                <button @click="generateSummary" :disabled="!canGenerate || isGenerating" class="btn btn-neutral">
+                <button @click="generateSummary" :disabled="!canGenerate || isGenerating" class="btn btn-primary">
                   <span v-if="isGenerating" class="loading loading-spinner loading-sm"></span>
                   <span v-else>Generiraj Sažetak</span>
                 </button>
@@ -354,10 +346,37 @@ function closeArticleModal() {
     />
 
   </div>
-</template>>
+</template>
 
 <style scoped>
 .bg-gradient-to-br {
   background: linear-gradient(to bottom right, var(--p), var(--s));
+}
+
+.ai-summary-card {
+  background: linear-gradient(
+    135deg,
+    oklch(var(--b2) / 0.9),
+    oklch(var(--b1) / 0.95) 60%,
+    oklch(var(--p) / 0.12)
+  );
+  color: oklch(var(--bc) / 1);
+}
+
+.ai-summary-btn {
+  background: linear-gradient(
+    135deg,
+    oklch(var(--b2) / 0.95),
+    oklch(var(--b1) / 1)
+  );
+  border: 1px solid oklch(var(--bc) / 0.08);
+  color: oklch(var(--bc) / 1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-summary-btn:disabled {
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
 }
 </style>

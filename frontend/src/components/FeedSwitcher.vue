@@ -41,9 +41,11 @@ watch(() => feedsStore.selectedCategoryId, () => {
 const emit = defineEmits(['feed-changed']);
 
 const getFeedDomain = (feed) => {
-  if (feed?.domain) return feed.domain;
+  const rawDomain = feed?.domain || feed?.url || '';
+  if (!rawDomain) return '';
   try {
-    return new URL(feed?.url || '').hostname.replace('www.', '');
+    const url = rawDomain.includes('://') ? rawDomain : `https://${rawDomain}`;
+    return new URL(url).hostname.replace('www.', '');
   } catch {
     return '';
   }
