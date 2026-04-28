@@ -6,6 +6,10 @@ const props = defineProps({
   news: {
     type: Object,
     required: true
+  },
+  colorClass: {
+    type: String,
+    default: ''
   }
 })
 
@@ -116,10 +120,10 @@ const toggleBookmark = async () => {
     class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full overflow-hidden"
     style="min-width: 0;">
     <div class="card-body p-3 sm:p-4">
-      <div class="flex gap-3 sm:gap-4 flex-col sm:flex-row">
+      <div class="flex gap-3 flex-row">
         <!-- SLIKA VIJESTI -->
-        <div class="flex-shrink-0 cursor-pointer w-full sm:w-32" @click="openNewsModal">
-          <figure class="relative overflow-hidden w-full sm:w-32 h-40 sm:h-24 rounded-lg bg-base-300">
+        <div class="flex-shrink-0 cursor-pointer w-20 sm:w-32" @click="openNewsModal">
+          <figure class="relative overflow-hidden w-20 h-20 sm:w-32 sm:h-24 rounded-lg bg-base-300">
             <img v-if="imageUrl && !imageError" :src="imageUrl" :alt="news.title"
               class="absolute inset-0 w-full h-full object-cover transition-transform duration-300 hover:scale-110"
               @error="handleImageError" loading="lazy" />
@@ -138,7 +142,7 @@ const toggleBookmark = async () => {
         <div class="flex-1 min-w-0 w-full overflow-hidden">
           <!-- izvor badge -->
           <div class="mb-2">
-            <span class="badge badge-primary badge-sm">
+            <span class="badge badge-outline badge-xs" :class="colorClass ? `${colorClass} border-current` : ''">
               {{ news.source || 'Vijesti' }}
             </span>
             <span v-if="news.domain" class="badge badge-ghost badge-sm ml-1">
@@ -161,7 +165,7 @@ const toggleBookmark = async () => {
 
           <!-- naredbe nad vijestima -->
           <div class="flex justify-between items-center flex-wrap gap-2">
-            <div class="flex gap-1"> <!-- 
+            <div class="flex gap-1"> <!--
               <button @click="toggleLike" class="btn btn-xs btn-circle" :class="isLiked ? 'btn-error' : 'btn-ghost'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="isLiked ? 'currentColor' : 'none'"
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -188,7 +192,7 @@ const toggleBookmark = async () => {
               </button>
             </div>
 
-            <button @click="openNewsModal" class="btn btn-xs btn-primary">
+            <button @click="openNewsModal" class="btn btn-xs btn-primary btn-outline">
               Čitaj
               <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">

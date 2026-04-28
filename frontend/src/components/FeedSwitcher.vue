@@ -4,7 +4,7 @@ import { useFeedsStore } from '../stores/feedStore';
 
 const feedsStore = useFeedsStore();
 
-// Aktivni feed ID 
+// Aktivni feed ID
 const activeFeedId = ref(null);
 
 // Svi feedovi u trenutno odabranoj kategoriji
@@ -23,8 +23,8 @@ const feedCounts = ref({});
 
 // Odaberi feed
 const selectFeed = (feedId) => {
-  activeFeedId.value = feedId;
-  emit('feed-changed', feedId);
+activeFeedId.value = activeFeedId.value === feedId ? null : feedId;
+emit('feed-changed', activeFeedId.value);
 };
 
 // Odaberi sve feedove
@@ -69,15 +69,6 @@ onMounted(() => {
   <div v-if="categoryFeeds.length > 0" class="feed-switcher">
     <!-- Desktop verzija -->
     <div class="hidden md:block mb-4">
-      <button
-        @click="selectAllFeeds"
-        :class="activeFeedId === null ? 'btn-primary' : 'btn-ghost'"
-        class="btn btn-xs mb-3"
-        title="Prikaži sve feedove iz kategorije"
-      > 
-        <span class="text-xs">📰 Svi ({{ categoryFeeds.length }})</span>
-      </button>
-
       <div class="desktop-source-grid">
         <button
           v-for="feed in categoryFeeds"
@@ -99,7 +90,6 @@ onMounted(() => {
             <span class="block text-xs font-medium truncate">{{ feed.name }}</span>
             <span class="block text-[10px] opacity-60 truncate">{{ getFeedDomain(feed) }}</span>
           </span>
-          <span v-if="feed.isCustom" class="badge badge-xs ml-1">custom</span>
         </button>
       </div>
     </div>
@@ -107,17 +97,14 @@ onMounted(() => {
     <!-- Mobile verzija -->
     <div class="md:hidden mb-4">
       <div class="form-control">
-        <label class="label">
-          <span class="label-text">Odaberi feed izvor:</span>
-        </label>
-        <select 
-          v-model="activeFeedId" 
+        <select
+          v-model="activeFeedId"
           @change="emit('feed-changed', activeFeedId)"
-          class="select select-bordered select-sm w-full"
+          class="select select-bordered select-sm w-full font-semibold"
         >
-          <option :value="null">📰 Svi feedovi ({{ categoryFeeds.length }})</option>
-          <option 
-            v-for="feed in categoryFeeds" 
+          <option :value="null">📰 Svi izvori ({{ categoryFeeds.length }})</option>
+          <option
+            v-for="feed in categoryFeeds"
             :key="feed.id"
             :value="feed.id"
           >
@@ -128,15 +115,7 @@ onMounted(() => {
     </div>
 
     <!-- Info o aktivnom feedu -->
-    <div v-if="activeFeed" class="alert alert-info shadow-sm mb-4">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-      </svg>
-      <div>
-        <div class="font-semibold">{{ activeFeed.name }}</div>
-        <div class="text-xs opacity-75">{{ activeFeed.domain }}</div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -163,11 +142,11 @@ onMounted(() => {
 
 @media (max-width: 375px) {
   .feed-switcher {
-    padding: 0.25rem; 
+    padding: 0.25rem;
   }
   .alert {
-    padding: 0.5rem; 
-    font-size: 0.875rem; 
+    padding: 0.5rem;
+    font-size: 0.875rem;
   }
 }
 </style>

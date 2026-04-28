@@ -12,8 +12,8 @@
     </div>
     <div :class="['dropdown dropdown-end ml-auto', { 'dropdown-open': isDropdownOpen }]" ref="dropdownContainer">
       <div
-        tabindex="0" 
-        role="button" 
+        tabindex="0"
+        role="button"
         class="btn btn-ghost btn-circle avatar"
         ref="dropdownTrigger"
         @click="toggleDropdown"
@@ -25,11 +25,11 @@
           />
         </div>
       </div>
-      <ul 
-        tabindex="-1" 
+      <ul
+        tabindex="-1"
         class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
         ref="dropdownMenu"
-      >       
+      >
         <li>
           <RouterLink to="/settings/feeds" class="justify-between" @click="handleMenuClick">
             Postavke feed-ova
@@ -180,7 +180,7 @@ onUnmounted(() => {
 <style>
 @media (max-width: 375px) {
   .navbar .btn {
-    padding: 0.25rem 0.5rem; 
+    padding: 0.25rem 0.5rem;
   }
   .navbar .text-xl {
     font-size: 1rem;

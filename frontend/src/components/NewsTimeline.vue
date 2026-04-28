@@ -97,6 +97,19 @@ const formatDate = (dateString) => {
   }
 }
 
+const getTimelineColorClass = (dateString) => {
+  if (!dateString) return 'text-base-300';
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return 'text-base-300';
+
+  const diffHours = (new Date() - d) / (1000 * 60 * 60);
+
+  if (diffHours < 2) return 'text-error'; // Very fresh -> red
+  if (diffHours < 6) return 'text-warning'; // Fresh -> yellow/orange
+  if (diffHours < 24) return 'text-primary'; // Today -> primary
+  return 'text-base-300'; // older
+};
+
 const loadMore = () => {
   if (loadingMore.value || !hasMore.value) return
 
@@ -288,44 +301,32 @@ onUnmounted(() => {
 </script>
 
 <template>
-   <div class="w-full max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 overflow-x-hidden">
-    <!-- Info o trenutnoj kategoriji
-      <div v-if="feedsStore.selectedCategory" class="mb-6 p-4 bg-base-200 rounded-lg">
-        <p class="text-sm">
-          <strong>📂 Kategorija:</strong> {{ feedsStore.selectedCategory.name }}
-          <span v-if="feedsStore.selectedCategoryId !== 'all'" class="ml-3 opacity-75">
-            ({{ feedsStore.selectedFeeds.length }} feedova)
-          </span>
-        </p>
-      </div>-->
-
+   <div class="w-full max-w-4xl mx-auto px-0 sm:px-4 py-2 sm:py-8 overflow-x-hidden">
     <!-- Feed Switcher -->
-    <FeedSwitcher @feed-changed="handleFeedChange" />
+    <div class="px-3 sm:px-0">
+      <FeedSwitcher @feed-changed="handleFeedChange" />
+    </div>
 
     <!-- head -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-      <h2 class="text-3xl font-bold">Najnovije vijesti</h2>
-      <div class="flex flex-wrap gap-2">
-        <button @click="setSortNewest" :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'" class="btn btn-xs sm:btn-sm"
-          :disabled="loading">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 px-3 sm:px-0">
+      <h2 class="text-xl font-semibold">Najnovije vijesti</h2>
+      <div class="join w-full sm:w-auto">
+        <button @click="setSortNewest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
+                :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'" :disabled="loading">
           Najnovije
         </button>
-        <button @click="setSortOldest" :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'" class="btn btn-xs sm:btn-sm"
-          :disabled="loading">
+        <button @click="setSortOldest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
+                :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'" :disabled="loading">
           Najstarije
         </button>
-        <button 
-  @click="refreshNews" 
-  class="btn btn-sm btn-outline"
-  :class="{ 'loading': loading }"
-  :disabled="loading"
->
-  <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-  </svg>
-  <span v-if="!loading">Refresh</span>
-  <span v-else>Učitavam...</span>
-</button>
+        <button @click="refreshNews" class="btn btn-xs sm:btn-sm flex-none join-item btn-outline" :disabled="loading">
+          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="loading loading-spinner loading-xs sm:loading-sm" v-else></span>
+        </button>
       </div>
     </div>
 
@@ -350,36 +351,36 @@ onUnmounted(() => {
     </div>
 
     <!-- vremenska crta -->
-    <ul v-else-if="displayedNews.length > 0" class="timeline timeline-vertical timeline-compact">
+    <ul v-else-if="displayedNews.length > 0" class="timeline timeline-vertical timeline-compact max-w-full">
       <li v-for="(news, index) in displayedNews" :key="news.link || index">
-        <hr v-if="index > 0" class="bg-primary" />
+        <hr v-if="index > 0" class="bg-base-300" />
 
         <!-- datum i vrijeme -->
-        <div class="timeline-start text-end pr-4 py-6">
-          <time class="font-mono text-sm font-bold block">
+        <div class="timeline-start text-end pr-2 sm:pr-4 py-3 sm:py-6">
+          <time class="font-mono text-xs sm:text-sm font-bold block">
             {{ formatTime(news.pubDate) }}
           </time>
-          <time class="font-mono text-xs opacity-60 block mt-1">
+          <time class="font-mono text-[10px] sm:text-xs opacity-60 block mt-0.5 sm:mt-1">
             {{ formatDate(news.pubDate) }}
           </time>
         </div>
 
         <!-- vremenska crta sredina -->
         <div class="timeline-middle">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-500" :class="getTimelineColorClass(news.pubDate)">
             <path fill-rule="evenodd"
               d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
               clip-rule="evenodd" />
           </svg>
         </div>
-        <div class="timeline-end pl-4 py-4 w-full">
+        <div class="timeline-end pl-2 sm:pl-4 py-2 sm:py-4 w-full" style="max-width: calc(100% - 3rem);">
           <div class="w-full">
-            <NewsCardCompact :news="news" @like="handleLike" @dislike="handleDislike" @open-modal="openModal" />
+            <NewsCardCompact :news="news" :color-class="getTimelineColorClass(news.pubDate)" @like="handleLike" @dislike="handleDislike" @open-modal="openModal" />
           </div>
         </div>
 
 
-        <hr v-if="index < displayedNews.length - 1" class="bg-primary" />
+        <hr v-if="index < displayedNews.length - 1" class="bg-base-300" />
       </li>
     </ul>
 

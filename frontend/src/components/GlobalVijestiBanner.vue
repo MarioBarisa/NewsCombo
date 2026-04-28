@@ -1,33 +1,25 @@
 <template>
-    <div class="news-carousel bg-base-200 rounded-box p-4 sm:p-6">
-      <h2 class="text-2xl font-bold mb-4">Najbitnije vijesti</h2>
-
-      <div v-if="isBackgroundLoading" class="mb-4 rounded-lg bg-base-100/40 px-3 py-2">
-        <div class="flex items-center gap-2 text-xs opacity-80">
-          <span class="loading loading-spinner loading-xs"></span>
-          <span>Učitavam preostale izvore u pozadini ({{ loadingProgress }}%)</span>
-        </div>
-        <progress class="progress progress-primary w-full h-1.5 mt-2" :value="loadingProgress" max="100"></progress>
-      </div>
+    <div class="news-carousel bg-base-200 rounded-box p-3 sm:p-4">
+      <h2 class="text-lg font-semibold mb-3">Najbitnije vijesti</h2>
 
       <div v-if="loading && news.length === 0" class="flex justify-center py-8">
         <span class="loading loading-spinner loading-lg"></span>
       </div>
-      
+
       <div v-else-if="currentNews" class="relative">
         <!-- idi lijevo -->
-        <button 
+        <button
           v-if="news.length > 1"
           @click="goToPrevious"
-          class="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-xs sm:btn-sm btn-ghost hover:btn-primary transition-all duration-300"
+          class="absolute left-2 mr-1 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-xs sm:btn-sm btn-ghost hover:btn-primary transition-all duration-300"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-  
+
         <!-- idi desno -->
-        <button 
+        <button
           v-if="news.length > 1"
           @click="goToNext"
           class="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-xs sm:btn-sm btn-ghost hover:btn-primary transition-all duration-300"
@@ -36,17 +28,17 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
         </button>
-  
-        <div 
+
+        <div
           @click="openNewsDetail(currentNews)"
           class="cursor-pointer hover:bg-base-300 rounded-box p-3 sm:p-4 transition-all duration-300 mx-0 sm:mx-8 overflow-hidden"
         >
         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center">
             <div v-if="currentNews.enclosure?.link || currentNews.thumbnail" class="shrink-0">
-              <img 
-                :src="currentNews.enclosure?.link || currentNews.thumbnail" 
+              <img
+                :src="currentNews.enclosure?.link || currentNews.thumbnail"
                 :alt="currentNews.title"
-                class="w-24 h-24 object-cover rounded-lg"
+                class="w-60 h-30 sm:w-24 sm:h-24 object-cover rounded-lg"
                 @error="onImageError"
               />
             </div>
@@ -60,18 +52,18 @@
             </div>
           </div>
         </div>
-        
+
         <!-- indikacijski krugovi za galeriju -->
         <div class="flex justify-center mt-4 gap-2" v-if="news.length > 1">
           <div
-            v-for="(_, index) in news" 
+            v-for="(_, index) in news"
             :key="index"
             :class="['w-2 h-2 rounded-full transition-all duration-300 cursor-pointer', index === currentIndex ? 'bg-primary' : 'bg-base-content opacity-30']"
             @click="goToSlide(index)"
           ></div>
         </div>
       </div>
-      
+
       <div v-else-if="error" class="text-center text-error py-8">
         <div class="alert alert-error">
           <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -103,7 +95,7 @@
       />
     </div>
   </template>
-  
+
   <script>
   import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
   import { useNewsGlobal } from '../Services/NewsGlobal.js';
@@ -113,7 +105,7 @@
     components: { NewsModal },
     setup() {
       const newsService = useNewsGlobal();
-      
+
       const news = ref([]);
       const currentIndex = ref(0);
       const currentNews = ref(null);
@@ -181,10 +173,10 @@
         currentNews.value = mockNews[0];
         startCarousel();
       };
-  
+
       const startCarousel = () => {
         if (intervalId.value) clearInterval(intervalId.value);
-        
+
         if (news.value.length > 1) {
           intervalId.value = setInterval(() => {
             currentIndex.value = (currentIndex.value + 1) % news.value.length;
@@ -192,7 +184,7 @@
           }, 5000);
         }
       };
-  
+
       const openNewsDetail = (newsItem) => {
         selectedNews.value = newsItem;
         isNewsModalOpen.value = true;
@@ -204,14 +196,14 @@
           selectedNews.value = null;
         }, 200);
       };
-  
+
       const stripHtml = (html) => {
         if (!html) return '';
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
         return tmp.textContent || tmp.innerText || '';
       };
-  
+
       const formatDate = (dateString) => {
         if (!dateString) return '';
         try {
@@ -225,27 +217,27 @@
           return '';
         }
       };
-  
+
       const goToSlide = (index) => {
         currentIndex.value = index;
         currentNews.value = news.value[index];
         startCarousel();
       };
-  
+
       const goToNext = () => {
         const nextIndex = (currentIndex.value + 1) % news.value.length;
         goToSlide(nextIndex);
       };
-  
+
       const goToPrevious = () => {
         const prevIndex = currentIndex.value === 0 ? news.value.length - 1 : currentIndex.value - 1;
         goToSlide(prevIndex);
       };
-  
+
       const onImageError = (event) => {
         event.target.style.display = 'none';
       };
-  
+
       onMounted(() => {
         fetchNews();
       });
@@ -264,7 +256,7 @@
           clearInterval(intervalId.value);
         }
       });
-  
+
       return {
         loading,
         error,
@@ -289,7 +281,7 @@
     }
   };
   </script>
-  
+
   <style scoped>
   .line-clamp-2 {
     display: -webkit-box;
@@ -298,7 +290,7 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  
+
   .line-clamp-3 {
     -webkit-line-clamp: 3;
     line-clamp: 3;

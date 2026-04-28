@@ -235,7 +235,7 @@ function closeArticleModal() {
 
         <!-- LISTA SAŽETAKA -->
         <div v-if="summaries.length > 0">
-          
+
           <!-- HEADER SA GUMBOM ZA BRISANJE SVEGA -->
           <div class="flex justify-between items-center mb-6 px-1">
             <h2 class="text-xl font-bold opacity-70">Tvoji sažeci</h2>
@@ -248,7 +248,7 @@ function closeArticleModal() {
           </div>
 
           <div class="space-y-6">
-            <div 
+            <div
               v-for="summary in summaries" 
               :key="summary._id"
               class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all"
