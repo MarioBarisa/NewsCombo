@@ -1,79 +1,55 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="isOpen" class="modal modal-open" @click.self="closeModal">
-        <div class="modal-box max-w-4xl w-full h-[90dvh] p-0 relative flex flex-col overflow-hidden" style="height: 90dvh; max-height: 90dvh;">
-          <div
-            class="flex-shrink-0 bg-base-100 border-b border-base-300 px-6 py-4 flex justify-between items-center shadow-sm backdrop-blur-lg bg-base-100/95 z-10">
-            <div class="flex-1 min-w-0 sm:pr-4">
-              <h3 class="font-bold text-base sm:text-lg line-clamp-2 sm:line-clamp-1">
-                {{ newsItem?.title || 'Učitavanje...' }}
-              </h3>
-              <div class="flex flex-wrap gap-2 items-center mt-1">
-                <p class="text-sm opacity-60" v-if="newsItem?.source">
-                  {{ newsItem.source }}
-                </p>
-                <span class="badge badge-xs" :class="enhancedContent ? 'badge-success' : 'badge-info'">
-                  {{ enhancedContent ? 'Cijeli članak učitan' : 'RSS sadržaj' }}
-                </span>
-              </div>
-            </div>
+      <div v-if="isOpen" class="modal modal-open modal-bottom sm:modal-middle" @click.self="closeModal">
+        <div class="modal-box max-w-4xl w-[96%] md:w-[90%] lg:w-[85%] max-h-[92dvh] sm:max-h-[88vh] md:max-h-[90vh] p-0 relative flex flex-col overflow-hidden rounded-2xl md:rounded-3xl mx-auto shadow-2xl mb-4 sm:mb-0">
+          <button @click="closeModal" class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3 z-50 bg-base-200/50 hover:bg-base-300 backdrop-blur-sm" aria-label="Zatvori">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-            <div class="flex gap-2">
-              <a v-if="newsItem?.link" :href="newsItem.link" target="_blank" rel="noopener noreferrer"
-                class="btn btn-sm btn-primary gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                <span class="hidden sm:inline">Otvori izvorno</span>
-              </a>
-              <button @click="closeModal" class="btn btn-sm btn-circle btn-ghost" aria-label="Zatvori">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                  stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
           <div class="flex-1 min-h-0 overflow-y-auto bg-base-100">
-            <article class="max-w-3xl mx-auto px-6 py-8">
-              <figure v-if="articleImage && !imageError" class="mb-8 -mx-6 sm:mx-0">
+            <article class="max-w-4xl mx-auto px-5 sm:px-8 md:px-12 py-8 md:py-10">
+              <figure v-if="articleImage && !imageError" class="mb-6 mx-0">
                 <img :src="articleImage" :alt="newsItem?.title"
-                  class="w-full rounded-none sm:rounded-xl shadow-2xl object-cover max-h-[500px]"
+                  class="w-full rounded-xl shadow-sm object-contain max-h-[350px] bg-base-200/50"
                   @error="handleImageError" loading="eager" />
               </figure>
 
-              <header class="mb-8">
-                <h1 class="text-4xl sm:text-5xl font-extrabold mb-4 leading-tight text-base-content">
+              <header class="mb-6">
+                <h1 class="text-3xl sm:text-4xl font-bold mb-4 leading-snug text-base-content tracking-tight">
                   {{ newsItem?.title }}
                 </h1>
-                <div
-                  class="flex flex-wrap gap-4 text-sm opacity-70 border-l-4 border-primary pl-4 py-3 bg-base-200/50 rounded-r">
-                  <div v-if="articleAuthor" class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span class="font-semibold">{{ articleAuthor }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                    </svg>
-                    <span class="font-semibold">{{ articleSource }}</span>
-                  </div>
-                  <div v-if="newsItem?.pubDate" class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <time>{{ formatDate(newsItem.pubDate) }}</time>
+                <div class="flex flex-wrap justify-between items-center gap-4 bg-base-200/50 rounded-r border-l-4 border-primary pl-4 pr-3 py-3 w-full">
+                  <div class="flex flex-wrap gap-4 text-sm opacity-80 items-center">
+                    <div v-if="articleAuthor" class="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span class="font-semibold">{{ articleAuthor }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                      </svg>
+                      <span class="font-semibold">{{ articleSource }}</span>
+                    </div>
+                    <div v-if="newsItem?.pubDate" class="flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <time>{{ formatDate(newsItem.pubDate) }}</time>
+                    </div>
+                    <span class="badge badge-sm font-medium border-none hidden sm:inline-flex" :class="enhancedContent ? 'bg-success/20 text-success' : 'bg-info/20 text-info'">
+                      {{ enhancedContent ? 'Cijeli članak' : 'Samo RSS' }}
+                    </span>
                   </div>
                 </div>
               </header>
@@ -87,7 +63,7 @@
                 </div>
 
                 <!--glavni dio članka -->
-                <div class="article-content text-base-content/90 leading-relaxed space-y-4" v-html="articleContent">
+                <div class="article-content text-base-content leading-relaxed space-y-5 text-lg" v-html="articleContent">
                 </div>
 
                 <!-- članak loading indikator -->
@@ -143,8 +119,7 @@
               <div class="h-4"></div>
             </article>
           </div>
-          <div
-            class="flex-shrink-0 bg-base-100/95 backdrop-blur-lg border-t border-base-300 px-6 py-3 flex justify-between items-center shadow-lg z-10">
+          <div class="shrink-0 bg-base-100/95 backdrop-blur-lg border-t border-base-300 px-6 py-3 flex justify-between items-center shadow-lg z-10">
             <div class="flex gap-2">
               <button @click="toggleBookmark" class="btn btn-sm btn-circle tooltip ml-2"
                 :class="isBookmarked ? 'btn-primary' : 'btn-ghost'" data-tip="Spremi za kasnije">
@@ -154,8 +129,14 @@
                     d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
               </button>
+              <a v-if="newsItem?.link" :href="newsItem.link" target="_blank" rel="noopener noreferrer"
+                class="btn btn-sm btn-circle btn-primary tooltip" data-tip="Otvori original">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
             </div>
-            <div class="text-xs opacity-60 flex items-center gap-2">
+            <div class="hidden sm:flex text-xs opacity-60 items-center gap-2">
               <kbd class="kbd kbd-sm">ESC</kbd>
               <span>za zatvaranje</span>
             </div>
@@ -578,9 +559,8 @@ onUnmounted(() => {
 }
 
 .article-content :deep(p) {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
   line-height: 1.8;
-  font-size: 1.05rem;
 }
 
 .article-content :deep(h2) {

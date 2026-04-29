@@ -373,7 +373,7 @@ onUnmounted(() => {
               clip-rule="evenodd" />
           </svg>
         </div>
-        <div class="timeline-end pl-2 sm:pl-4 py-2 sm:py-4 w-full" style="max-width: calc(100% - 3rem);">
+        <div class="timeline-end pl-1 sm:pl-4 py-2 sm:py-4 w-full" style="max-width: calc(100% - 1rem);">
           <div class="w-full">
             <NewsCardCompact :news="news" :color-class="getTimelineColorClass(news.pubDate)" @like="handleLike" @dislike="handleDislike" @open-modal="openModal" />
           </div>

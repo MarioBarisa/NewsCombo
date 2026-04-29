@@ -134,11 +134,11 @@ function handleSkipSetup() {
         <button @click="handleSkipSetup">close</button>
       </form>
     </dialog>
-    <section class="px-4 pt-4 pb-2">
+    <section class="px-1 sm:px-4 pt-4 pb-2">
       <GlobalVijestiBanner></GlobalVijestiBanner>
     </section>
     <div class="divider my-0 opacity-30"></div>
-    <section class="px-4 pb-4">
+    <section class="px-1 sm:px-4 pb-4">
       <FeedSelect></FeedSelect>
       <AISummaryView v-if="isAISummarySelected"></AISummaryView>
       <NewsTimeline v-else></NewsTimeline>
