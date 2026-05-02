@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { useFeedsStore } from '../stores/feedStore';
+import {ref, onMounted, onUnmounted, computed} from 'vue';
+import {useFeedsStore} from '../stores/feedStore';
 
 const feedsStore = useFeedsStore();
 const isSearchVisible = ref(false);
@@ -67,65 +67,68 @@ onUnmounted(() => {
     <div class="hidden md:flex items-center gap-1 flex-wrap justify-center">
       <!-- AI sažetak -->
       <button
-        @click="selectCategory('ai-summary')"
-        :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'btn-primary' : 'btn-ghost'"
-        class="btn btn-sm"
-        title="AI personalizirani sažetak vijesti"
+          @click="selectCategory('ai-summary')"
+          :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'btn-primary' : 'btn-ghost'"
+          class="btn btn-sm"
+          title="AI personalizirani sažetak vijesti"
       >
         <span class="text-xs sm:text-sm">🌟AI Sažetak</span>
       </button>
 
       <!-- SVI FEEDOVI -->
       <button
-        @click="selectCategory('all')"
-        :class="feedsStore.selectedCategoryId === 'all' ? 'btn-primary' : 'btn-ghost'"
-        class="btn btn-sm"
-        title="Sve vijesti iz svih feedova u kronološkom redoslijedu"
+          @click="selectCategory('all')"
+          :class="feedsStore.selectedCategoryId === 'all' ? 'btn-primary' : 'btn-ghost'"
+          class="btn btn-sm"
+          title="Sve vijesti iz svih feedova u kronološkom redoslijedu"
       >
         <span class="text-xs sm:text-sm">📰 Svi feedovi</span>
       </button>
 
       <!-- CUSTOM KATEGORIJE -->
       <button
-        v-for="category in customCategories"
-        :key="category.id"
-        @click="selectCategory(category.id)"
-        :class="feedsStore.selectedCategoryId === category.id ? 'btn-primary' : 'btn-ghost'"
-        class="btn btn-sm"
-        :title="`${category.feeds.length} feedova u ovoj kategoriji`"
+          v-for="category in customCategories"
+          :key="category.id"
+          @click="selectCategory(category.id)"
+          :class="feedsStore.selectedCategoryId === category.id ? 'btn-primary' : 'btn-ghost'"
+          class="btn btn-sm"
+          :title="`${category.feeds.length} feedova u ovoj kategoriji`"
       >
         <span class="text-xs sm:text-sm">{{ category.name }}</span>
       </button>
     </div>
 
     <!-- MOBILE-->
-    <div class="md:hidden w-full overflow-x-auto scrollbar-hide">
+    <div
+        class="md:hidden w-full overflow-x-auto scrollbar-hide"
+        style="-webkit-overflow-scrolling: touch;"
+    >
       <div class="flex items-center gap-2 px-3 py-2 min-w-max">
         <!-- AI sažetak -->
         <button
-          @click="selectCategory('ai-summary')"
-          :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
-          class="btn btn-sm whitespace-nowrap flex-shrink-0"
+            @click="selectCategory('ai-summary')"
+            :class="feedsStore.selectedCategoryId === 'ai-summary' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
+            class="btn btn-sm whitespace-nowrap flex-shrink-0"
         >
           🌟 AI Sažetak
         </button>
 
         <!-- SVI FEEDOVI -->
         <button
-          @click="selectCategory('all')"
-          :class="feedsStore.selectedCategoryId === 'all' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
-          class="btn btn-sm whitespace-nowrap flex-shrink-0"
+            @click="selectCategory('all')"
+            :class="feedsStore.selectedCategoryId === 'all' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
+            class="btn btn-sm whitespace-nowrap flex-shrink-0"
         >
           Svi feedovi
         </button>
 
         <!-- CUSTOM KATEGORIJE -->
         <button
-          v-for="category in customCategories"
-          :key="category.id"
-          @click="selectCategory(category.id)"
-          :class="feedsStore.selectedCategoryId === category.id ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
-          class="btn btn-sm whitespace-nowrap flex-shrink-0"
+            v-for="category in customCategories"
+            :key="category.id"
+            @click="selectCategory(category.id)"
+            :class="feedsStore.selectedCategoryId === category.id ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'"
+            class="btn btn-sm whitespace-nowrap flex-shrink-0"
         >
           {{ category.name }}
           <span class="badge badge-xs ml-1">{{ category.feeds.length }}</span>
@@ -134,10 +137,11 @@ onUnmounted(() => {
     </div>
 
     <!-- INFO badge (samo desktop) -->
-    <div v-if="feedsStore.selectedCategory.id !== 'all' && feedsStore.selectedCategory.id !== 'ai-summary'" 
+    <div v-if="feedsStore.selectedCategory.id !== 'all' && feedsStore.selectedCategory.id !== 'ai-summary'"
          class="ml-4 hidden sm:flex items-center gap-2 text-sm opacity-75">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
       <span>{{ feedsStore.selectedFeeds.length }} feedova</span>
     </div>
@@ -152,11 +156,6 @@ onUnmounted(() => {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
-}
-
-.scrollbar-hide {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
 }
 </style>
 

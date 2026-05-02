@@ -10,46 +10,52 @@
     <div v-else-if="news.length > 0" class="relative group">
       <!-- idi lijevo -->
       <button
-        v-if="news.length > 1"
-        @click="goToPrevious"
-        class="hidden sm:flex absolute left-0 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-neutral shadow-xl hover:scale-105 transition-transform"
+          v-if="news.length > 1"
+          @click="goToPrevious"
+          class="hidden sm:flex absolute left-0 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-neutral shadow-xl hover:scale-105 transition-transform"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
       </button>
 
       <!-- idi desno -->
       <button
-        v-if="news.length > 1"
-        @click="goToNext"
-        class="hidden sm:flex absolute right-0 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-neutral shadow-xl hover:scale-105 transition-transform"
+          v-if="news.length > 1"
+          @click="goToNext"
+          class="hidden sm:flex absolute right-0 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-neutral shadow-xl hover:scale-105 transition-transform"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
       </button>
 
       <!-- Sadržaj -->
-      <div class="flex sm:block overflow-x-auto sm:overflow-x-visible snap-x sm:snap-none hide-scrollbar gap-4 pb-2 sm:pb-0" @scroll.passive="onMobileScroll" ref="scrollContainer">
+      <div
+          class="flex sm:block overflow-x-auto sm:overflow-x-visible snap-x sm:snap-none hide-scrollbar gap-4 pb-2 sm:pb-0"
+          @scroll.passive="onMobileScroll" ref="scrollContainer"
+          style="-webkit-overflow-scrolling: touch; touch-action: pan-x;"
+      >
         <template v-for="(item, index) in news" :key="index">
           <div
-            v-show="isMobile || index === currentIndex"
-            class="flex-shrink-0 w-[85vw] sm:w-full snap-center cursor-pointer hover:bg-base-300 rounded-box p-3 sm:py-4 sm:px-12 transition-all duration-300 mx-0 overflow-hidden"
-            @click="openNewsDetail(item)"
+              v-show="isMobile || index === currentIndex"
+              class="flex-shrink-0 w-[85vw] sm:w-full snap-center cursor-pointer hover:bg-base-300 rounded-box p-3 sm:py-4 sm:px-12 transition-all duration-300 mx-0"
+              @click="openNewsDetail(item)"
           >
             <div class="flex flex-row gap-3 sm:gap-4 items-center text-left">
               <div v-if="item.enclosure?.link || item.thumbnail" class="shrink-0 w-24 h-24 sm:w-28 sm:h-28">
                 <img
-                  :src="item.enclosure?.link || item.thumbnail"
-                  :alt="item.title"
-                  class="w-full h-full object-cover rounded-lg shadow-sm"
-                  @error="onImageError"
+                    :src="item.enclosure?.link || item.thumbnail"
+                    :alt="item.title"
+                    class="w-full h-full object-cover rounded-lg shadow-sm"
+                    @error="onImageError"
                 />
               </div>
               <div class="flex-1 w-full min-w-0 flex flex-col justify-center py-1">
-                <h3 class="font-bold text-base sm:text-lg mb-1 line-clamp-2 leading-tight" :title="item.title">{{ item.title }}</h3>
-                <p class="text-sm opacity-70 mb-2 line-clamp-2 hidden sm:block" :title="stripHtml(item.description)">{{ stripHtml(item.description) }}</p>
+                <h3 class="font-bold text-base sm:text-lg mb-1 line-clamp-2 leading-tight" :title="item.title">
+                  {{ item.title }}</h3>
+                <p class="text-sm opacity-70 mb-2 line-clamp-2 hidden sm:block" :title="stripHtml(item.description)">
+                  {{ stripHtml(item.description) }}</p>
 
                 <div class="flex flex-row items-center gap-2 text-xs opacity-60 mt-auto">
                   <span class="badge badge-sm badge-outline">{{ item.source || 'Vijesti' }}</span>
@@ -64,17 +70,20 @@
       <!-- indikacijski krugovi za galeriju -->
       <div class="flex justify-center mt-2 gap-2" v-if="news.length > 1">
         <div
-          v-for="(_, index) in news"
-          :key="index"
-          :class="['w-2 h-2 rounded-full transition-all duration-300 cursor-pointer', index === currentIndex ? 'bg-primary' : 'bg-base-content opacity-30']"
-          @click="goToSlide(index)"
+            v-for="(_, index) in news"
+            :key="index"
+            :class="['w-2 h-2 rounded-full transition-all duration-300 cursor-pointer', index === currentIndex ? 'bg-primary' : 'bg-base-content opacity-30']"
+            @click="goToSlide(index)"
         ></div>
       </div>
     </div>
 
     <div v-else-if="error" class="text-center text-error py-8">
       <div class="alert alert-error">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
         <span>{{ error }}</span>
       </div>
       <div class="flex gap-2 justify-center mt-4">
@@ -85,8 +94,10 @@
 
     <div v-else class="text-center py-8 opacity-70">
       <div class="flex flex-col items-center gap-4">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-50" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
         </svg>
         <p>Nema dostupnih vijesti</p>
         <div class="flex gap-2">
@@ -97,20 +108,20 @@
     </div>
 
     <NewsModal
-      :news-item="selectedNews"
-      :is-open="isNewsModalOpen"
-      @close="closeNewsModal"
+        :news-item="selectedNews"
+        :is-open="isNewsModalOpen"
+        @close="closeNewsModal"
     />
   </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
-import { useNewsGlobal } from '../Services/NewsGlobal.js';
+import {ref, onMounted, onUnmounted, computed, watch} from 'vue';
+import {useNewsGlobal} from '../Services/NewsGlobal.js';
 import NewsModal from './NewsModal.vue';
 
 export default {
-  components: { NewsModal },
+  components: {NewsModal},
   setup() {
     const newsService = useNewsGlobal();
 
@@ -153,28 +164,28 @@ export default {
     };
 
     const fetchNews = async () => {
-    try {
-      retryCount.value++;
-      const fetchedNews = await newsService.fetchNews('all');
+      try {
+        retryCount.value++;
+        const fetchedNews = await newsService.fetchNews('all');
 
-      if (fetchedNews && fetchedNews.length > 0) {
-        applyNews(fetchedNews);
-        retryCount.value = 0;
-        startCarousel();
-      } else if (retryCount.value < maxRetries) {
-        setTimeout(() => fetchNews(), 2000 * retryCount.value);
-      } else {
-        loadMockNews();
+        if (fetchedNews && fetchedNews.length > 0) {
+          applyNews(fetchedNews);
+          retryCount.value = 0;
+          startCarousel();
+        } else if (retryCount.value < maxRetries) {
+          setTimeout(() => fetchNews(), 2000 * retryCount.value);
+        } else {
+          loadMockNews();
+        }
+      } catch (err) {
+        console.error('Error fetching news:', err);
+        if (retryCount.value < maxRetries) {
+          setTimeout(() => fetchNews(), 2000 * retryCount.value);
+        } else {
+          loadMockNews();
+        }
       }
-    } catch (err) {
-      console.error('Error fetching news:', err);
-      if (retryCount.value < maxRetries) {
-        setTimeout(() => fetchNews(), 2000 * retryCount.value);
-      } else {
-        loadMockNews();
-      }
-    }
-  };
+    };
 
     const loadMockNews = () => {
       const mockNews = newsService.getMockNews();
@@ -233,10 +244,8 @@ export default {
       currentNews.value = news.value[index];
       startCarousel();
       if (isMobile.value && scrollContainer.value) {
-          const elements = scrollContainer.value.children;
-          if (elements && elements[index]) {
-              elements[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-          }
+        const itemWidth = scrollContainer.value.clientWidth;
+        scrollContainer.value.scrollLeft = itemWidth * index;
       }
     };
 
@@ -261,19 +270,19 @@ export default {
       const itemWidth = container.clientWidth;
       const newIndex = Math.round(scrollPosition / itemWidth);
       if (newIndex !== currentIndex.value && newIndex >= 0 && newIndex < news.value.length) {
-          currentIndex.value = newIndex;
+        currentIndex.value = newIndex;
       }
     };
 
     const checkMobile = () => {
       const mobile = window.innerWidth < 640;
       if (mobile !== isMobile.value) {
-          isMobile.value = mobile;
-          if (mobile) {
-              if (intervalId.value) clearInterval(intervalId.value);
-          } else {
-              startCarousel();
-          }
+        isMobile.value = mobile;
+        if (mobile) {
+          if (intervalId.value) clearInterval(intervalId.value);
+        } else {
+          startCarousel();
+        }
       }
     };
 
@@ -283,12 +292,12 @@ export default {
     });
 
     watch(
-      () => newsService.cachedNews.value,
-      (latestNews) => {
-        if (isAllCategoryNews(latestNews)) {
-          applyNews(latestNews);
+        () => newsService.cachedNews.value,
+        (latestNews) => {
+          if (isAllCategoryNews(latestNews)) {
+            applyNews(latestNews);
+          }
         }
-      }
     );
 
     onUnmounted(() => {
@@ -330,9 +339,11 @@ export default {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .line-clamp-2 {
@@ -343,12 +354,8 @@ export default {
   overflow: hidden;
 }
 
-.line-clamp-3 {
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 </style>
 
