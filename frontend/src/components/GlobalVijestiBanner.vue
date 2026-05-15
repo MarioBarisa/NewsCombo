@@ -34,12 +34,12 @@
       <div
           class="flex sm:block overflow-x-auto sm:overflow-x-visible snap-x sm:snap-none hide-scrollbar gap-4 pb-2 sm:pb-0"
           @scroll.passive="onMobileScroll" ref="scrollContainer"
-          style="-webkit-overflow-scrolling: touch; touch-action: pan-x;"
+          style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;"
       >
         <template v-for="(item, index) in news" :key="index">
           <div
               v-show="isMobile || index === currentIndex"
-              class="flex-shrink-0 w-[85vw] sm:w-full snap-center cursor-pointer hover:bg-base-300 rounded-box p-3 sm:py-4 sm:px-12 transition-all duration-300 mx-0"
+              class="flex-shrink-0 w-[85vw] sm:w-full snap-center cursor-pointer hover:bg-base-300 rounded-box p-3 sm:py-4 sm:px-12 transition-colors duration-300 mx-0"
               @click="openNewsDetail(item)"
           >
             <div class="flex flex-row gap-3 sm:gap-4 items-center text-left">

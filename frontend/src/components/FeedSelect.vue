@@ -101,7 +101,7 @@ onUnmounted(() => {
     <!-- MOBILE-->
     <div
         class="md:hidden w-full overflow-x-auto scrollbar-hide"
-        style="-webkit-overflow-scrolling: touch;"
+        style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;"
     >
       <div class="flex items-center gap-2 px-3 py-2 min-w-max">
         <!-- AI sažetak -->
