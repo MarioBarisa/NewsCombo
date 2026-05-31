@@ -15,17 +15,22 @@ const isPulling = ref(false);   // Is pulling to refresh
 const startY = ref(0);
 const pullDistance = ref(0);
 
+const isHorizontalScrollTarget = (el) => {
+  return el?.closest('.overflow-x-auto, .touch-pan-x, [style*="overflow-x: auto"]');
+};
+
 const handleTouchStart = (e) => {
+  if (isHorizontalScrollTarget(e.target)) return;
   if (window.scrollY === 0) {
     startY.value = e.touches[0].clientY;
   }
 };
 
 const handleTouchMove = (e) => {
+  if (isHorizontalScrollTarget(e.target)) return;
   if (startY.value > 0) {
     const currentY = e.touches[0].clientY;
     const distance = currentY - startY.value;
-    // allow down pull up to a certain point
     if (distance > 0 && window.scrollY === 0) {
       if (distance > 100) pullDistance.value = 100;
       else pullDistance.value = distance;
@@ -36,7 +41,6 @@ const handleTouchMove = (e) => {
 
 const handleTouchEnd = async () => {
   if (isPulling.value && pullDistance.value > 60) {
-    // Okini refresh
     const categoryId = feedsStore.selectedCategoryId;
     await newsService.refreshNews(categoryId);
   }
@@ -80,7 +84,7 @@ function handleSkipSetup() {
 </script>
 
 <template>
-  <main @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd" class="transition-transform duration-200" :style="isPulling ? `transform: translateY(${pullDistance * 0.4}px)` : ''">
+  <main @touchstart.passive="handleTouchStart" @touchmove.passive="handleTouchMove" @touchend.passive="handleTouchEnd" class="transition-transform duration-200" :style="isPulling ? `transform: translateY(${pullDistance * 0.4}px)` : ''">
     <!-- Pull to refresh hint -->
     <div v-if="pullDistance > 0 && !isBackgroundLoading" class="absolute top-0 left-0 w-full flex justify-center items-center pointer-events-none z-50 h-8" style="transform: translateY(-100%);">
       <div class="badge badge-primary gap-2" :class="{'opacity-50': pullDistance < 60, 'opacity-100 font-bold': pullDistance >= 60}">

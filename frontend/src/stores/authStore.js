@@ -61,6 +61,12 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       this.user = null;
       localStorage.removeItem('token');
+    },
+
+    setProfilePicture(url) {
+      if (this.user) {
+        this.user = { ...this.user, profilePicture: url };
+      }
     }
   }
 });

@@ -22,6 +22,7 @@
           <img alt="Profilna slika"
             :src="profileImageSrc"
             @error="handleAvatarError"
+            @load="handleAvatarLoad"
           />
         </div>
       </div>
@@ -76,6 +77,7 @@ const isDropdownOpen = ref(false);
 const imageNonce = ref(Date.now());
 const imageRetryCount = ref(0);
 const useFallbackAvatar = ref(false);
+let fallbackTimer = null;
 
 const fallbackAvatarUrl = computed(() => {
   const name = authStore.user?.name || 'U';
@@ -119,6 +121,17 @@ const handleOutsideClick = (event) => {
   }
 };
 
+const handleAvatarLoad = () => {
+  imageRetryCount.value = 0;
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
+  }
+  if (authStore.user?.profilePicture) {
+    useFallbackAvatar.value = false;
+  }
+};
+
 const handleAvatarError = () => {
   if (imageRetryCount.value < 1) {
     imageRetryCount.value += 1;
@@ -126,6 +139,14 @@ const handleAvatarError = () => {
     return;
   }
   useFallbackAvatar.value = true;
+  if (!fallbackTimer) {
+    fallbackTimer = setTimeout(() => {
+      useFallbackAvatar.value = false;
+      imageRetryCount.value = 0;
+      imageNonce.value = Date.now();
+      fallbackTimer = null;
+    }, 30000);
+  }
 };
 
 function handleLogout() {
@@ -140,7 +161,6 @@ onMounted(() => {
   document.addEventListener('pointerdown', handleOutsideClick, { passive: true });
   document.addEventListener('click', handleOutsideClick, true);
   document.addEventListener('touchstart', handleOutsideClick, true);
-  document.addEventListener('scroll', handleScroll, true);
   removeAfterEach = router.afterEach(() => {
     closeDropdown();
   });
@@ -164,12 +184,15 @@ watch(
 );
 
 onUnmounted(() => {
+  if (fallbackTimer) {
+    clearTimeout(fallbackTimer);
+    fallbackTimer = null;
+  }
   window.removeEventListener('scroll', handleScroll);
   window.removeEventListener('touchmove', handleScroll);
   document.removeEventListener('pointerdown', handleOutsideClick);
   document.removeEventListener('click', handleOutsideClick, true);
   document.removeEventListener('touchstart', handleOutsideClick, true);
-  document.removeEventListener('scroll', handleScroll, true);
   if (removeAfterEach) {
     removeAfterEach();
     removeAfterEach = null;

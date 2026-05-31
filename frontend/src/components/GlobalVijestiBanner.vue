@@ -32,9 +32,9 @@
 
       <!-- Sadržaj -->
       <div
-          class="flex sm:block overflow-x-auto sm:overflow-x-visible snap-x sm:snap-none hide-scrollbar gap-4 pb-2 sm:pb-0"
+          class="flex sm:block overflow-x-auto sm:overflow-x-visible snap-x sm:snap-none hide-scrollbar touch-pan-x gap-4 pb-2 sm:pb-0"
           @scroll.passive="onMobileScroll" ref="scrollContainer"
-          style="-webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;"
+          style="overscroll-behavior-x: contain;"
       >
         <template v-for="(item, index) in news" :key="index">
           <div
@@ -244,8 +244,9 @@ export default {
       currentNews.value = news.value[index];
       startCarousel();
       if (isMobile.value && scrollContainer.value) {
-        const itemWidth = scrollContainer.value.clientWidth;
-        scrollContainer.value.scrollLeft = itemWidth * index;
+        const container = scrollContainer.value;
+        const itemWidth = container.querySelector('.flex-shrink-0')?.offsetWidth || container.clientWidth;
+        container.scrollTo({ left: itemWidth * index, behavior: 'smooth' });
       }
     };
 
@@ -343,7 +344,6 @@ export default {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 .line-clamp-2 {

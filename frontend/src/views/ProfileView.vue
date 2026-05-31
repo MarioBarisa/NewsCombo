@@ -288,7 +288,7 @@ async function uploadImage(event) {
 
       if (res.ok) {
         const data = await res.json();
-        authStore.user.profilePicture = data.profilePicture;
+        authStore.setProfilePicture(data.profilePicture);
       }
     } catch (e) {
       console.error('Greška pri uploadu:', e);
