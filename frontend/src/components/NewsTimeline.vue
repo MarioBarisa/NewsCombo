@@ -125,15 +125,11 @@ const loadMore = () => {
 }
 
 // refresh po odabranoj kategoriji
-const refreshNews = async () => {
-  if (loading.value) {
-    console.log('Refresh vec u procesu');
-    return;
-  }
+const refreshNews = async (categoryId = null) => {
   try {
-    const categoryId = feedsStore.selectedCategoryId;
-    console.log('Refresham vijesti za kategoriju:', categoryId);
-    const fetchedNews = await newsService.refreshNews(categoryId, activeFeedId.value);
+    const catId = categoryId || feedsStore.selectedCategoryId;
+    console.log('Refresham vijesti za kategoriju:', catId);
+    const fetchedNews = await newsService.refreshNews(catId, activeFeedId.value);
 
     if (fetchedNews && fetchedNews.length > 0) {
       console.log('Učitano', fetchedNews.length, 'vijesti');
@@ -152,8 +148,7 @@ const refreshNews = async () => {
 
 const loadDemoNews = () => {
   console.log('demo vijesti')
-  const mockNews = newsService.getMockNews()
-  allNews.value = mockNews
+  allNews.value = newsService.getMockNews()
   displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
   currentPage.value = 1
 }
@@ -242,7 +237,7 @@ watch(
     currentPage.value = 1
     allNews.value = []
     activeFeedId.value = null
-    await refreshNews()
+    await refreshNews(newCategoryId)
   }
 )
 
