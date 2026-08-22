@@ -10,14 +10,19 @@
         NewsCombo
       </router-link>
     </div>
-    <div :class="['dropdown dropdown-end ml-auto', { 'dropdown-open': isDropdownOpen }]" ref="dropdownContainer">
-      <div
-        tabindex="0"
-        role="button"
-        class="btn btn-ghost btn-circle avatar"
-        ref="dropdownTrigger"
-        @click="toggleDropdown"
-      >
+    <!-- ime + avatar u horizontalnom redu -->
+    <div class="flex items-center ml-auto">
+      <span v-if="displayName" class="hidden md:block text-sm font-semibold mr-2 opacity-80 select-none max-w-[10rem] truncate">
+        {{ displayName }}
+      </span>
+      <div :class="['dropdown dropdown-end', { 'dropdown-open': isDropdownOpen }]" ref="dropdownContainer">
+        <div
+          tabindex="0"
+          role="button"
+          class="btn btn-ghost btn-circle avatar"
+          ref="dropdownTrigger"
+          @click="toggleDropdown"
+        >
         <div class="w-10 sm:w-12 rounded-full">
           <img alt="Profilna slika"
             :src="profileImageSrc"
@@ -33,28 +38,72 @@
       >
         <li>
           <RouterLink to="/settings/feeds" class="justify-between" @click="handleMenuClick">
-            Postavke feed-ova
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+              Postavke feed-ova
+            </span>
           </RouterLink>
         </li>
         <li>
           <RouterLink to="/bookmarks" class="justify-between" @click="handleMenuClick">
-            Spremljeni članci
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+              Spremljeni članci
+            </span>
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/taste" class="justify-between" @click="handleMenuClick">
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+              </svg>
+              Moji interesi
+            </span>
           </RouterLink>
         </li>
         <li>
           <RouterLink to="/profile" class="justify-between" @click="handleMenuClick">
-            Profil
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Profil
+            </span>
           </RouterLink>
         </li>
         <li>
           <RouterLink to="/settings" class="justify-between" @click="handleMenuClick">
-            Postavke
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+              </svg>
+              Postavke
+            </span>
           </RouterLink>
         </li>
         <li>
-          <a @click="handleLogout">Logout</a>
+          <a @click="handleLogout" class="justify-between cursor-pointer">
+            <span class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              </svg>
+              Logout
+            </span>
+          </a>
         </li>
       </ul>
+      </div>
     </div>
   </div>
 </template>
@@ -82,6 +131,14 @@ let fallbackTimer = null;
 const fallbackAvatarUrl = computed(() => {
   const name = authStore.user?.name || 'U';
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`;
+});
+
+// ime pored avatara — fallback na email prefiks
+const displayName = computed(() => {
+  const u = authStore.user;
+  if (u?.name) return u.name;
+  if (u?.email) return String(u.email).split('@')[0];
+  return '';
 });
 
 const profileImageSrc = computed(() => {

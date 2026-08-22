@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import NewsModal from '../components/NewsModal.vue';
@@ -15,6 +15,7 @@ const isGenerating = ref(false);
 const isLoading = ref(true);
 const selectedNews = ref(null);
 const isNewsModalOpen = ref(false);
+let pollIntervalId = null;
 
 const hasFeedsInGroup = computed(() => {
   return aiGroup.value.feedIds && aiGroup.value.feedIds.length > 0;
@@ -132,10 +133,18 @@ onMounted(async () => {
   ]);
   isLoading.value = false;
 
-  setInterval(() => {
+  pollIntervalId = setInterval(() => {
     loadGenerationStatus();
     loadSummaries();
   }, 60000);
+});
+
+// cleanup — inače se poller gomila pri svakoj navigaciji na AI tab
+onUnmounted(() => {
+  if (pollIntervalId) {
+    clearInterval(pollIntervalId);
+    pollIntervalId = null;
+  }
 });
 
 async function deleteAllSummaries() {

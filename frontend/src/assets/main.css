@@ -55,10 +55,25 @@ body {
   }
 }
 
-.timeline,
-.timeline li {
-  overflow: hidden;
+/* ---- Personalizirana veličina fonta (samo desktop) ----
+   Postavke -> "Veličina teksta" slider piše --nc-font-scale (0.9 - 1.4).
+   Sve rem-based veličine (cijeli Tailwind/daisyUI) se automatski skaliraju. */
+:root {
+  --nc-font-scale: 1.08; /* default malo veće na desktopu */
 }
+
+@media (min-width: 768px) {
+  html {
+    font-size: calc(100% * var(--nc-font-scale));
+  }
+}
+
+/* Tooltipovi ne smiju završiti ispod slika/susjednih elemenata */
+.tooltip:before,
+.tooltip:after {
+  z-index: 60;
+}
+
   
   @media (max-width: 768px) {
     .container {

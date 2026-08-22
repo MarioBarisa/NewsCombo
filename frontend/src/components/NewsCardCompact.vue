@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { API_URL } from '../config.js';
+import { useTasteStore } from '../stores/tasteStore.js';
 
 const props = defineProps({
   news: {
@@ -10,15 +11,41 @@ const props = defineProps({
   colorClass: {
     type: String,
     default: ''
+  },
+  // personalna ocjena — samo NewsCombo
+  showScore: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['like', 'dislike', 'open-modal'])
+const emit = defineEmits(['open-modal'])
+const taste = useTasteStore()
 
-const isLiked = ref(false)
-const isDisliked = ref(false)
+const isLiked = computed(() => taste.isLiked(props.news.link))
+const isDisliked = computed(() => taste.isDisliked(props.news.link))
 const imageError = ref(false)
 const isBookmarked = ref(false);
+
+const comboScore = computed(() => (props.showScore && taste.hasEnoughData ? props.news._combo : null))
+
+const scoreClass = computed(() => {
+  const pct = comboScore.value?.pct ?? 50
+  if (pct >= 65) return 'badge-success'
+  if (pct >= 40) return 'badge-warning'
+  return 'badge-ghost'
+})
+
+const signedPct = (v) => {
+  const pct = Math.round((v || 0) * 100)
+  return pct > 0 ? `+${pct}%` : `${pct}%`
+}
+
+const scoreTip = computed(() => {
+  const c = comboScore.value
+  if (!c) return ''
+  return `Izvor ${signedPct(c.src)} • Teme ${signedPct(c.topic)} • Kategorija ${signedPct(c.cat)}`
+})
 
 const imageUrl = computed(() => {
   if (imageError.value) return null
@@ -53,37 +80,22 @@ const openNewsModal = () => {
 }
 
 const toggleLike = () => {
-  if (isDisliked.value) {
-    isDisliked.value = false
-  }
-  isLiked.value = !isLiked.value
-  emit('like', props.news.link, isLiked.value)
+  taste.toggleHeart(props.news)
 }
 
 const toggleDislike = () => {
-  if (isLiked.value) {
-    isLiked.value = false
-  }
-  isDisliked.value = !isDisliked.value
-  emit('dislike', props.news.link, isDisliked.value)
+  taste.toggleDislike(props.news)
+}
+
+// klik na karticu otvara članak (gumbi/veze imaju vlastito ponašanje)
+const handleCardClick = (event) => {
+  if (event.target.closest('button, a')) return
+  openNewsModal()
 }
 
 const handleImageError = () => {
   imageError.value = true
 }
-
-onMounted(() => {
-  try {
-    const preferences = JSON.parse(localStorage.getItem('newsPreferences') || '{}')
-    if (preferences[props.news.link] === 'like') {
-      isLiked.value = true
-    } else if (preferences[props.news.link] === 'dislike') {
-      isDisliked.value = true
-    }
-  } catch (e) {
-    console.error('Error loading preferences:', e)
-  }
-})
 
 const toggleBookmark = async () => {
   const url = `${API_URL}/bookmarks`;
@@ -101,13 +113,17 @@ const toggleBookmark = async () => {
         title: props.news.title,
         originalUrl: props.news.link,
         source: props.news.source,
-        body: props.news.description, // samo opis šalje
+        body: props.news.description,
         publishedAt: props.news.pubDate || props.news.isoDate
       })
     });
 
     if (response.ok) {
-      isBookmarked.value = !isBookmarked.value;
+      const nowBookmarked = !isBookmarked.value;
+      isBookmarked.value = nowBookmarked;
+      if (nowBookmarked) {
+        taste.recordBookmark(props.news); // blagi pozitivni signal za algoritam
+      }
     }
   } catch (e) {
     console.error(e);
@@ -117,8 +133,9 @@ const toggleBookmark = async () => {
 
 <template>
   <div
-    class="card card-compact bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 w-full overflow-hidden"
-    style="min-width: 0;">
+    class="card card-compact bg-base-200 shadow-lg hover:shadow-xl transition-all duration-300 w-full cursor-pointer"
+    style="min-width: 0;"
+    @click="handleCardClick">
     <div class="card-body p-3 sm:p-4">
       <div class="flex gap-3 flex-row">
         <!-- SLIKA VIJESTI -->
@@ -139,15 +156,29 @@ const toggleBookmark = async () => {
         </div>
 
         <!-- SADRŽAJ -->
-        <div class="flex-1 min-w-0 w-full overflow-hidden">
+        <div class="flex-1 min-w-0 w-full">
           <!-- izvor badge -->
-          <div class="mb-2">
+          <div class="mb-2 flex items-center gap-1 flex-wrap">
             <span class="badge badge-outline badge-xs" :class="colorClass ? `${colorClass} border-current` : ''">
               {{ news.source || 'Vijesti' }}
             </span>
             <span v-if="news.domain" class="badge badge-ghost badge-sm ml-1">
               {{ news.domain }}
             </span>
+            <!-- personalna ocjena (samo NewsCombo) -->
+            <a v-if="comboScore"
+               class="badge badge-sm ml-1 gap-1 cursor-pointer tooltip tooltip-primary"
+               :class="scoreClass"
+               :data-tip="`Tvoja ocjena — ${scoreTip}. Klikni za detalje.`"
+               title="Koliko će te ova vijest vjerojatno zanimati"
+               @click.stop.prevent="$router.push('/taste')">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="4.5" />
+                <circle cx="12" cy="12" r="0.5" fill="currentColor" />
+              </svg>
+              {{ comboScore.pct }}%
+            </a>
           </div>
 
           <!-- naslov -->
@@ -165,8 +196,11 @@ const toggleBookmark = async () => {
 
           <!-- naredbe nad vijestima -->
           <div class="flex justify-between items-center flex-wrap gap-2">
-            <div class="flex gap-1"> <!--
-              <button @click="toggleLike" class="btn btn-xs btn-circle" :class="isLiked ? 'btn-error' : 'btn-ghost'">
+            <div class="flex gap-1 items-center">
+              <!-- srce (sviđa mi se) -->
+              <button @click="toggleLike" class="btn btn-xs btn-circle tooltip tooltip-top"
+                :class="isLiked ? 'btn-error' : 'btn-ghost'"
+                :data-tip="isLiked ? 'Makni srce' : 'Sviđa mi se'">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="isLiked ? 'currentColor' : 'none'"
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round"
@@ -174,16 +208,18 @@ const toggleBookmark = async () => {
                 </svg>
               </button>
 
-              <button @click="toggleDislike" class="btn btn-xs btn-circle"
-                :class="isDisliked ? 'btn-warning' : 'btn-ghost'">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="isDisliked ? 'currentColor' : 'none'"
-                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <!-- ne sviđa mi se -->
+              <button @click="toggleDislike" class="btn btn-xs btn-circle tooltip tooltip-top"
+                :class="isDisliked ? 'btn-neutral' : 'btn-ghost'"
+                :data-tip="isDisliked ? 'Poništi' : 'Ne sviđa mi se'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-                          -->
-              <button @click="toggleBookmark" class="btn btn-xs btn-circle ml-1"
-                :class="isBookmarked ? 'btn-primary' : 'btn-ghost'">
+
+              <button @click="toggleBookmark" class="btn btn-xs btn-circle ml-1 tooltip tooltip-top"
+                :class="isBookmarked ? 'btn-primary' : 'btn-ghost'" data-tip="Spremi članak">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :fill="isBookmarked ? 'currentColor' : 'none'"
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round"

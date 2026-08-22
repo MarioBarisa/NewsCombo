@@ -99,7 +99,7 @@ export const useFeedsStore = defineStore('feeds', () => {
       console.log('✅ Feed kreiran na backendu:', response.data);
       await refreshStore();
       
-      // return ID novog feeda
+      // vrati ID novog feeda
       return {
         success: true,
         feedId: response.data.noviId || response.data.id
@@ -124,7 +124,7 @@ export const useFeedsStore = defineStore('feeds', () => {
       
       const response = await newsApi.deleteFeed(numericId);
       
-      // Ukloni iz local state-a
+      // ukloni iz lokalnog stanja
       availableFeeds.value = availableFeeds.value.filter(
         f => f.id !== feedId
       );
@@ -152,7 +152,7 @@ export const useFeedsStore = defineStore('feeds', () => {
     try {
       const response = await newsApi.getAllGropus();
       
-      // Mapiranje grupa iz backenda u lokalni format kategorija
+      // mapiraj grupe iz backenda
       const backendCategories = response.data.map(grupa => ({
         id: `cat_${grupa.id}`,
         name: grupa.naziv,
@@ -162,10 +162,9 @@ export const useFeedsStore = defineStore('feeds', () => {
         ),
         isDefault: false,
         createdAt: new Date().toISOString(),
-        backendId: grupa.id // čuvamo backend ID za kasnije operacije
+        backendId: grupa.id,
       }));
       
-      // Dodaj custom kategorije nakon default "Svi feedovi" kategorije
       categories.value = [
         categories.value[0], // zadrži "Svi feedovi"
         ...backendCategories
@@ -180,11 +179,11 @@ export const useFeedsStore = defineStore('feeds', () => {
   
 
 
-  // dodaj  kategoriju
+  // dodaj kategoriju
   const addCategory = async (categoryName, selectedFeedIds = []) => {
     isLoading.value = true;
     try {
-      // Konvertiraj feed ID-ove u numerički format za backend
+      // feed ID-ovi u numerički format za backend
       const numericFeedIds = selectedFeedIds.map(id => 
         parseInt(id.replace('feed_', ''))
       );
@@ -220,7 +219,7 @@ export const useFeedsStore = defineStore('feeds', () => {
         throw new Error("Kategorija nije pronađena ili je default kategorija");
       }
       
-      // Konvertiraj feed ID-ove u number 
+      // feed ID-ovi u brojeve
       const numericFeedIds = selectedFeedIds.map(id => 
         parseInt(id.replace('feed_', ''))
       );
@@ -250,7 +249,6 @@ export const useFeedsStore = defineStore('feeds', () => {
   
 
   const deleteCategory = async (categoryId) => {
-    // PROVJERA odmah da li je default
     const category = categories.value.find(c => c.id === categoryId);
     
     if (!category) {
@@ -266,12 +264,10 @@ export const useFeedsStore = defineStore('feeds', () => {
     isLoading.value = true;
     
     try {
-      //  backend ID
       const backendId = category.backendId || parseInt(categoryId.replace('cat_', ''));
-      
+
       console.log(`Brišem grupu s backend ID: ${backendId}`);
       
-      // brisanje s backenda
       const response = await newsApi.deleteGroup(backendId);
       console.log('Backend odgovor:', response.data);
 
@@ -299,10 +295,17 @@ export const useFeedsStore = defineStore('feeds', () => {
   const selectCategory = (categoryId) => {
     console.log('🔍 Selecting category:', categoryId);
     
-    //  case za AI sažetak
+    // AI sažetak
     if (categoryId === 'ai-summary') {
       selectedCategoryId.value = 'ai-summary';
       localStorage.setItem('selectedCategoryId', 'ai-summary');
+      return true;
+    }
+    
+    // NewsCombo personalizirani feed
+    if (categoryId === 'combo') {
+      selectedCategoryId.value = 'combo';
+      localStorage.setItem('selectedCategoryId', 'combo');
       return true;
     }
     
@@ -325,7 +328,7 @@ export const useFeedsStore = defineStore('feeds', () => {
   const selectedFeeds = computed(() => {
     const category = selectedCategory.value;
     
-    // AI Summary nema feedove (koristi posebnu AI grupu)
+    // AI sažetak nema feedove
     if (category.id === 'ai-summary') {
       return [];
     }
@@ -354,7 +357,7 @@ export const useFeedsStore = defineStore('feeds', () => {
     return availableFeeds.value.filter(f => f.isCustom);
   });
 
-// uklonjen localStorage support
+// legacy
 const saveToLocalStorage = () => {
   try {
     const dataToSave = {
@@ -401,23 +404,33 @@ const refreshStore = async () => {
   const initializeStore = async () => {
     isLoading.value = true;
     try {
-      //  učitaj feedove
+      // učitaj feedove i kategorije
       await loadFeedsFromBackend();
-      
-      //  učitaj kategorije/grupe
       await loadCategoriesFromBackend();
-      
-      // Učitaj odabranu kategoriju iz localStorage-a
+
       const savedCategoryId = localStorage.getItem('selectedCategoryId');
       if (savedCategoryId && categories.value.some(c => c.id === savedCategoryId)) {
         selectedCategoryId.value = savedCategoryId;
       }
-      
+
     } catch (error) {
       console.error("Greška pri inicijalizaciji store-a:", error);
     } finally {
       isLoading.value = false;
     }
+  };
+
+  // Jednokratna inicijalizacija po sesiji — App.vue je pokrene, ostali komponenti je čekaju.
+  // Rješava trostruki poziv i race pri bootu.
+  let initPromise = null;
+  const ensureReady = () => {
+    if (!initPromise) {
+      initPromise = initializeStore().catch((err) => {
+        console.error('ensureReady: inicijalizacija nije uspjela:', err);
+        initPromise = null; // dopusti ponovni pokušaj sljedeći put
+      });
+    }
+    return initPromise;
   };
   
 
@@ -515,6 +528,7 @@ const refreshStore = async () => {
     loadFeedsFromBackend,
     loadCategoriesFromBackend, 
     initializeStore,
+    ensureReady,
     refreshStore,
     setupInitialData
   };  

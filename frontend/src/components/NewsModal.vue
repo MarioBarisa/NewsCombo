@@ -50,6 +50,17 @@
                     <span class="badge badge-sm font-medium border-none hidden sm:inline-flex" :class="enhancedContent ? 'bg-success/20 text-success' : 'bg-info/20 text-info'">
                       {{ enhancedContent ? 'Cijeli članak' : 'Samo RSS' }}
                     </span>
+                    <span v-if="comboScore" class="badge badge-sm border-none gap-1 tooltip tooltip-primary cursor-pointer"
+                      :class="comboScore.pct >= 65 ? 'badge-success' : comboScore.pct >= 40 ? 'badge-warning' : 'badge-ghost'"
+                      :data-tip="`Tvoja ocjena — ${scoreTip}`"
+                      title="Koliko će te ova vijest vjerojatno zanimati">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle cx="12" cy="12" r="4.5" />
+                        <circle cx="12" cy="12" r="0.5" fill="currentColor" />
+                      </svg>
+                      {{ comboScore.pct }}%
+                    </span>
                   </div>
                 </div>
               </header>
@@ -121,7 +132,24 @@
           </div>
           <div class="shrink-0 bg-base-100/95 backdrop-blur-lg border-t border-base-300 px-6 py-3 flex justify-between items-center shadow-lg z-10">
             <div class="flex gap-2">
-              <button @click="toggleBookmark" class="btn btn-sm btn-circle tooltip ml-2"
+              <button @click="toggleLike" class="btn btn-sm btn-circle tooltip tooltip-top"
+                :class="isLiked ? 'btn-error' : 'btn-ghost'"
+                :data-tip="isLiked ? 'Makni srce' : 'Sviđa mi se'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isLiked ? 'currentColor' : 'none'"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+              <button @click="toggleDislike" class="btn btn-sm btn-circle tooltip tooltip-top"
+                :class="isDisliked ? 'btn-neutral' : 'btn-ghost'"
+                :data-tip="isDisliked ? 'Poništi' : 'Ne sviđa mi se'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <button @click="toggleBookmark" class="btn btn-sm btn-circle tooltip tooltip-top ml-2"
                 :class="isBookmarked ? 'btn-primary' : 'btn-ghost'" data-tip="Spremi za kasnije">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" :fill="isBookmarked ? 'currentColor' : 'none'"
                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -151,6 +179,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { API_URL } from '../config.js';
+import { useTasteStore } from '../stores/tasteStore.js';
 
 const props = defineProps({
   newsItem: {
@@ -163,13 +192,29 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'like', 'dislike'])
-const isLiked = ref(false)
-const isDisliked = ref(false)
+const emit = defineEmits(['close'])
+const taste = useTasteStore()
 const imageError = ref(false)
 const isEnhancing = ref(false)
 const enhancedContent = ref('')
 const isBookmarked = ref(false)
+
+const isLiked = computed(() => (props.newsItem?.link ? taste.isLiked(props.newsItem.link) : false))
+const isDisliked = computed(() => (props.newsItem?.link ? taste.isDisliked(props.newsItem.link) : false))
+
+// personalna ocjena (dodjeljuje je rankFeed u NewsCombo feedu)
+const comboScore = computed(() => (taste.hasEnoughData ? props.newsItem?._combo : null))
+
+const signedPct = (v) => {
+  const pct = Math.round((v || 0) * 100)
+  return pct > 0 ? `+${pct}%` : `${pct}%`
+}
+
+const scoreTip = computed(() => {
+  const c = comboScore.value
+  if (!c) return ''
+  return `Izvor ${signedPct(c.src)} • Teme ${signedPct(c.topic)} • Kategorija ${signedPct(c.cat)}`
+})
 
 
 const BACKEND_PROXY = `${API_URL}/proxy-article?url=`;
@@ -240,8 +285,7 @@ const extractImageFromHtml = (html) => {
 const cleanHtml = (html) => {
   if (!html) return ''
 
-  // trash destroyer 
-  html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
   html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
   html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
   html = html.replace(/\s+/g, ' ').trim()
@@ -278,7 +322,6 @@ const handleImageError = () => {
   imageError.value = true
 }
 
-// main fn
 const enhanceContent = async () => {
   if (!props.newsItem?.link) return
 
@@ -314,7 +357,7 @@ const enhanceContent = async () => {
       for (const selector of selectors) {
         const element = doc.querySelector(selector)
         if (element) {
-          //  nepotrebni elementi
+          // ukloni nepotrebne elemente
           element.querySelectorAll('script, style, iframe, .ad, .advertisement, .social-share, .related-posts').forEach(el => el.remove())
 
           // dohvati paragrafe
@@ -388,20 +431,14 @@ const fetchWithProxy = async (url) => {
 
 
 const toggleLike = () => {
-  if (isDisliked.value) isDisliked.value = false
-  isLiked.value = !isLiked.value
-  emit('like', props.newsItem?.link, isLiked.value)
-  savePreference()
+  taste.toggleHeart(props.newsItem)
 }
 
 const toggleDislike = () => {
-  if (isLiked.value) isLiked.value = false
-  isDisliked.value = !isDisliked.value
-  emit('dislike', props.newsItem?.link, isDisliked.value)
-  savePreference()
+  taste.toggleDislike(props.newsItem)
 }
 
-// provjera i toggle bookmarka
+// toggle bookmarka
 const toggleBookmark = async () => {
   const url = `${API_URL}/bookmarks`;
   const method = isBookmarked.value ? 'DELETE' : 'POST';
@@ -426,9 +463,13 @@ const toggleBookmark = async () => {
     });
 
     if (response.ok) {
-      isBookmarked.value = !isBookmarked.value;
-    } else {
-      const errorData = await response.json();
+      const nowBookmarked = !isBookmarked.value;
+      isBookmarked.value = nowBookmarked;
+      if (nowBookmarked && props.newsItem) {
+        taste.recordBookmark(props.newsItem); // blagi pozitivni signal
+      } else {
+        const errorData = await response.json();
+      }
     }
   } catch (e) {
     console.error("Greška s bookmarkom:", e);
@@ -436,36 +477,6 @@ const toggleBookmark = async () => {
   }
 }
 
-
-const savePreference = () => {
-  try {
-    const prefs = JSON.parse(localStorage.getItem('newsPreferences') || '{}')
-    if (isLiked.value) {
-      prefs[props.newsItem.link] = 'like'
-    } else if (isDisliked.value) {
-      prefs[props.newsItem.link] = 'dislike'
-    } else {
-      delete prefs[props.newsItem.link]
-    }
-    localStorage.setItem('newsPreferences', JSON.stringify(prefs))
-  } catch (e) {
-    console.error('Error saving preference:', e)
-  }
-}
-
-const loadPreferences = () => {
-  if (!props.newsItem?.link) return
-
-  try {
-    const prefs = JSON.parse(localStorage.getItem('newsPreferences') || '{}')
-    const pref = prefs[props.newsItem.link]
-
-    isLiked.value = pref === 'like'
-    isDisliked.value = pref === 'dislike'
-  } catch (e) {
-    console.error('Error loading preferences:', e)
-  }
-}
 
 const handleEscapeKey = (event) => {
   if (event.key === 'Escape' && props.isOpen) {
@@ -475,9 +486,9 @@ const handleEscapeKey = (event) => {
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
-    loadPreferences()
     document.body.style.overflow = 'hidden'
     enhancedContent.value = '' 
+    if (props.newsItem) taste.recordOpen(props.newsItem)
     setTimeout(() => {
       enhanceContent()
     }, 100)
@@ -486,15 +497,12 @@ watch(() => props.isOpen, (newVal) => {
   }
 })
 
-// watcher za ako je članak bookmarked
+// watcher za promjenu članka (bookmark reset + open signal + dohvat cijelog članka)
 watch(() => props.newsItem, () => {
   isBookmarked.value = false;
-})
-
-watch(() => props.newsItem, () => {
   if (props.isOpen) {
-    loadPreferences()
     enhancedContent.value = ''
+    if (props.newsItem) taste.recordOpen(props.newsItem)
 
     setTimeout(() => {
       enhanceContent()

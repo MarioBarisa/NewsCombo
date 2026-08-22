@@ -4,36 +4,32 @@ import { useFeedsStore } from '../stores/feedStore';
 
 const feedsStore = useFeedsStore();
 
-// Aktivni feed ID
 const activeFeedId = ref(null);
 
-// Svi feedovi u trenutno odabranoj kategoriji
+// feedovi trenutne kategorije
 const categoryFeeds = computed(() => {
   return feedsStore.selectedFeeds;
 });
 
-// Aktivni feed objekt
 const activeFeed = computed(() => {
   if (!activeFeedId.value) return null;
   return categoryFeeds.value.find(f => f.id === activeFeedId.value);
 });
 
-// Broj vijesti po feedu (može se koristiti kasnije -> vjv cu dodati mogucnost statistke da korisnik vidi koliko čita)
+// broj vijesti po feedu (za buduće statistike)
 const feedCounts = ref({});
 
-// Odaberi feed
 const selectFeed = (feedId) => {
 activeFeedId.value = activeFeedId.value === feedId ? null : feedId;
 emit('feed-changed', activeFeedId.value);
 };
 
-// Odaberi sve feedove
 const selectAllFeeds = () => {
   activeFeedId.value = null;
   emit('feed-changed', null);
 };
 
-// Reset kad se promijeni kategorija
+// reset pri promjeni kategorije
 watch(() => feedsStore.selectedCategoryId, () => {
   activeFeedId.value = null;
 });
@@ -53,7 +49,8 @@ const getFeedDomain = (feed) => {
 
 const getFaviconUrl = (feed) => {
   const domain = getFeedDomain(feed);
-  return domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64` : '';
+  // DDG ip3 rijetko vraća 404 (za razliku od google s2/favicons redirecta)
+  return domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : '';
 };
 
 const onFaviconError = (event) => {
@@ -102,7 +99,7 @@ onMounted(() => {
           @change="emit('feed-changed', activeFeedId)"
           class="select select-bordered select-sm w-full font-semibold"
         >
-          <option :value="null">📰 Svi izvori ({{ categoryFeeds.length }})</option>
+          <option :value="null">Svi izvori ({{ categoryFeeds.length }})</option>
           <option
             v-for="feed in categoryFeeds"
             :key="feed.id"
@@ -113,8 +110,6 @@ onMounted(() => {
         </select>
       </div>
     </div>
-
-    <!-- Info o aktivnom feedu -->
 
   </div>
 </template>

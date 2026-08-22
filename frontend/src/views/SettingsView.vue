@@ -1,7 +1,45 @@
 <template>
   <div class="container mx-auto p-6 max-w-4xl">
     <h1 class="text-3xl font-bold mb-6">Postavke</h1>
-    
+
+    <!-- Veličina teksta -->
+    <div class="card bg-base-200 shadow-xl mb-6">
+      <div class="card-body">
+        <h2 class="card-title mb-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+          </svg>
+          Veličina teksta
+        </h2>
+
+        <p class="text-sm opacity-70 mb-4">
+          Podesi veličinu teksta u aplikaciji. Utječe samo na desktop prikaz.
+        </p>
+        <div class="flex items-center gap-4">
+          <span class="text-xs opacity-60 w-4">A</span>
+          <input
+            type="range"
+            min="0.9"
+            max="1.4"
+            step="0.05"
+            :value="themeStore.fontScale"
+            @input="onFontInput"
+            class="range range-primary range-sm flex-1"
+            aria-label="Veličina teksta"
+          />
+          <span class="font-mono text-sm w-12 text-right">{{ Math.round(themeStore.fontScale * 100) }}%</span>
+          <button
+            v-if="themeStore.fontScale !== themeStore.DEFAULT_FONT_SCALE"
+            @click="themeStore.setFontScale(themeStore.DEFAULT_FONT_SCALE)"
+            class="btn btn-ghost btn-xs"
+          >
+            Resetiraj
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="card bg-base-200 shadow-xl">
       <div class="card-body">
         <h2 class="card-title mb-4">
@@ -48,6 +86,11 @@
 import { useThemeStore } from '../stores/theme'
 
 const themeStore = useThemeStore()
+
+// slider -> store (store radi clamp)
+const onFontInput = (event) => {
+  themeStore.setFontScale(parseFloat(event.target.value))
+}
 
 // formatiraj naziv teme
 const formatThemeName = (theme) => {

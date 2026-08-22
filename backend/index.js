@@ -24,6 +24,7 @@ import createNewsRoutes from "./routes/newsRoutes.js";
 import createBookmarkRoutes from "./routes/bookMarkRoutes.js";
 import createAIRoutes from "./routes/aiRoutes.js";
 import createAuthRoutes from "./routes/authRoutes.js";
+import createProfileRoutes from "./routes/profileRoutes.js";
 import { authMiddleware } from "./middleware/auth.js";
 
 const logger = (req, res, next) => {
@@ -42,14 +43,16 @@ async function startNC() {
     try {
         const db = await connectToDatabase();
         
-        // Auth routes 
+        // javne auth rute
         app.use('/api', createAuthRoutes(db));
         
-        // Zaštićene rute
+        // zaštićene rute
         app.use(authMiddleware);
         app.use(createNewsRoutes(db));
         app.use(createBookmarkRoutes(db));
         app.use('/api', createAIRoutes(db)); 
+        // profil interesa: rute s punim putem (/api/profile)
+        app.use(createProfileRoutes(db));
         
         app.listen(PORT, () => {
             console.log(`Server je pokrenut na: ${PORT}`);

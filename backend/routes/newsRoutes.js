@@ -756,6 +756,33 @@ router.post("/rss/parse-multiple", async (req, res) => {
 });
   
   // RSS PROXY RUTA (za izbjegavanje CORS-a)
+  // TTL cache u memoriji: dedupe burstova (više klijenata / refreshova) i brzi odgovori
+  const rssTtlCache = new Map(); // url -> { data, ts }
+  const RSS_CACHE_TTL_MS = 60 * 1000;
+  const RSS_CACHE_MAX_ENTRIES = 500;
+
+  const cacheGetFresh = (url) => {
+    const hit = rssTtlCache.get(url);
+    if (!hit) return null;
+    if (Date.now() - hit.ts > RSS_CACHE_TTL_MS) {
+      rssTtlCache.delete(url);
+      return null;
+    }
+    return hit.data;
+  };
+
+  const cacheSet = (url, data) => {
+    rssTtlCache.set(url, { data, ts: Date.now() });
+    if (rssTtlCache.size > RSS_CACHE_MAX_ENTRIES) {
+      let oldestKey = null;
+      let oldestTs = Infinity;
+      for (const [key, val] of rssTtlCache) {
+        if (val.ts < oldestTs) { oldestTs = val.ts; oldestKey = key; }
+      }
+      if (oldestKey) rssTtlCache.delete(oldestKey);
+    }
+  };
+
 router.post("/rss/fetch", async (req, res) => {
   const { urls } = req.body; 
   
@@ -786,9 +813,11 @@ router.post("/rss/fetch", async (req, res) => {
 
     const results = await Promise.allSettled(
       urls.map(async (url) => {
+        const cached = cacheGetFresh(url);
+        if (cached) return cached;
         try {
           const feed = await parser.parseURL(url);
-          return {
+          const data = {
             url,
             success: true,
             items: feed.items.slice(0, 20),
@@ -796,6 +825,8 @@ router.post("/rss/fetch", async (req, res) => {
             description: feed.description,
             feedImage: extractFeedImage(feed)
           };
+          cacheSet(url, data);
+          return data;
         } catch (error) {
           return {
             url,
@@ -821,6 +852,36 @@ router.get("/proxy-article", async (req, res) => {
   
   if (!url) {
     return res.status(400).json({ error: 'URL parametar je obavezan' });
+  }
+
+  // SSRF zaštita: blokiraj privatne/loopback adrese i ne-http protokole
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).json({ error: 'Nedozvoljen protokol' });
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const blockedHosts = ['localhost', '0.0.0.0', '::1', '[::1]'];
+    if (blockedHosts.includes(hostname) || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+      return res.status(400).json({ error: 'Nedozvoljen URL' });
+    }
+    // IPv4 privatni rasponi
+    const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+      const isPrivate =
+        a === 10 ||
+        a === 127 ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        (a === 169 && b === 254) ||
+        a === 0;
+      if (isPrivate) {
+        return res.status(400).json({ error: 'Nedozvoljen URL' });
+      }
+    }
+  } catch (e) {
+    return res.status(400).json({ error: 'Neispravan URL' });
   }
 
   try {

@@ -241,7 +241,7 @@
   </template>
   
   <script setup>
-  import { ref, computed, onMounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
   import axios from 'axios';
   import newsApi from '../api/newsApi.js';
   import NewsModal from './NewsModal.vue';
@@ -258,6 +258,7 @@
   const isGenerating = ref(false);
   const selectedNews = ref(null);
   const isNewsModalOpen = ref(false);
+  let pollIntervalId = null;
 
  
   const selectedFeeds = computed(() => {
@@ -435,7 +436,15 @@
     loadSummaries();
     
     // Refresh status every minute
-    setInterval(loadGenerationStatus, 60000);
+    pollIntervalId = setInterval(loadGenerationStatus, 60000);
+  });
+
+  // cleanup — poller se inače gomila pri svakom mountanju
+  onUnmounted(() => {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = null;
+    }
   });
   </script>
   

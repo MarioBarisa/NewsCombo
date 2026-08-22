@@ -5,6 +5,7 @@ import SettingsView from '../views/SettingsView.vue'
 import SettingsFeeds from '../views/SettingsFeeds.vue'
 import ArticleView from '../views/ArticleView.vue'
 import LandingView from '../views/LandingView.vue'
+import TasteProfileView from '../views/TasteProfileView.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const routes = [
@@ -13,7 +14,8 @@ const routes = [
   { path: '/profile', name: 'Profile', component: ProfileView, meta: { auth: true } },
   { path: '/settings', name: 'Settings', component: SettingsView, meta: { auth: true } },
   { path: '/settings/feeds', name: 'SettingsFeeds', component: SettingsFeeds, meta: { auth: true } },
-  { path: '/bookmarks', name: 'ArticleView', component: ArticleView, meta: { auth: true } }
+  { path: '/bookmarks', name: 'ArticleView', component: ArticleView, meta: { auth: true } },
+  { path: '/taste', name: 'TasteProfile', component: TasteProfileView, meta: { auth: true } }
 ]
 
 const router = createRouter({

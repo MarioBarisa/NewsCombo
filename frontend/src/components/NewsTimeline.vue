@@ -1,20 +1,21 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useNewsGlobal } from '../Services/NewsGlobal'
+import { useNewsGlobal, cacheKeyFor } from '../Services/NewsGlobal'
 import { useFeedsStore } from '../stores/feedStore'
+import { useTasteStore } from '../stores/tasteStore'
 import NewsCardCompact from './NewsCardCompact.vue'
 import NewsModal from './NewsModal.vue'
 import FeedSwitcher from './FeedSwitcher.vue'
 
 const newsService = useNewsGlobal()
 const feedsStore = useFeedsStore()
+const tasteStore = useTasteStore()
 
 const allNews = ref([])
 const displayedNews = ref([])
 const currentPage = ref(1)
 const itemsPerPage = 15
 const sortOrder = ref('desc')
-const userPreferences = ref({})
 const loadMoreTrigger = ref(null)
 const observer = ref(null)
 const loadingMore = ref(false)
@@ -23,18 +24,23 @@ const isModalOpen = ref(false)
 const activeFeedId = ref(null)
 const loading = computed(() => newsService.isLoading.value)
 const error = computed(() => newsService.error.value)
-const hasMore = computed(() => {
-  const totalAvailable = sortedNews.value.length
-  return totalAvailable > 0 && displayedNews.value.length < totalAvailable
-})
 
-// FILTRIRAJ VIJESTI PO ODABRANOM FEED-U
-const filteredNews = computed(() => {
-  if (!activeFeedId.value) {
-    return allNews.value;
+// NewsCombo način rada — personalizirani kronološki feed
+const isComboMode = computed(() => feedsStore.selectedCategoryId === 'combo')
+
+// očekivani cache ključ — guard protiv cross-category prikaza
+const expectedKey = ref(null)
+const computeExpectedKey = (categoryId) => {
+  const serviceCatId = categoryId === 'combo' ? 'all' : (categoryId || 'all');
+  let feeds;
+  if (!serviceCatId || serviceCatId === 'all') {
+    feeds = feedsStore.availableFeeds;
+  } else {
+    const cat = feedsStore.categories.find((c) => c.id === serviceCatId);
+    feeds = cat ? cat.feeds : [];
   }
-  return allNews.value.filter(news => news.feedId === activeFeedId.value);
-});
+  return cacheKeyFor(serviceCatId, feeds);
+}
 
 const sortedNews = computed(() => {
   const sorted = [...filteredNews.value]
@@ -45,18 +51,37 @@ const sortedNews = computed(() => {
   })
 })
 
+// personalizacija unutar kantica (samo combo način)
+const rankedNews = computed(() => {
+  if (!isComboMode.value) return sortedNews.value
+  return tasteStore.rankArticles(sortedNews.value)
+})
+
+const hasMore = computed(() => {
+  const totalAvailable = rankedNews.value.length
+  return totalAvailable > 0 && displayedNews.value.length < totalAvailable
+})
+
+// filtriraj po odabranom feedu
+const filteredNews = computed(() => {
+  if (!activeFeedId.value) {
+    return allNews.value;
+  }
+  return allNews.value.filter(news => news.feedId === activeFeedId.value);
+});
+
 const syncDisplayedNews = (items, resetPage = false) => {
   if (!Array.isArray(items)) return
   allNews.value = items
 
   if (resetPage) {
     currentPage.value = 1
-    displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
+    displayedNews.value = rankedNews.value.slice(0, itemsPerPage)
     return
   }
 
   const currentVisibleCount = displayedNews.value.length || itemsPerPage
-  displayedNews.value = sortedNews.value.slice(0, Math.max(itemsPerPage, currentVisibleCount))
+  displayedNews.value = rankedNews.value.slice(0, Math.max(itemsPerPage, currentVisibleCount))
 }
 
 const formatTime = (dateString) => {
@@ -104,10 +129,10 @@ const getTimelineColorClass = (dateString) => {
 
   const diffHours = (new Date() - d) / (1000 * 60 * 60);
 
-  if (diffHours < 2) return 'text-error'; // Very fresh -> red
-  if (diffHours < 6) return 'text-warning'; // Fresh -> yellow/orange
-  if (diffHours < 24) return 'text-primary'; // Today -> primary
-  return 'text-base-300'; // older
+  if (diffHours < 2) return 'text-error'; // vrlo svježe
+  if (diffHours < 6) return 'text-warning'; // svježe
+  if (diffHours < 24) return 'text-primary'; // danas
+  return 'text-base-300';
 };
 
 const loadMore = () => {
@@ -115,8 +140,8 @@ const loadMore = () => {
 
   loadingMore.value = true
   const start = displayedNews.value.length
-  const end = Math.min(start + itemsPerPage, sortedNews.value.length)
-  const newItems = sortedNews.value.slice(start, end)
+  const end = Math.min(start + itemsPerPage, rankedNews.value.length)
+  const newItems = rankedNews.value.slice(start, end)
 
   setTimeout(() => {
     displayedNews.value.push(...newItems)
@@ -124,12 +149,17 @@ const loadMore = () => {
   }, 300)
 }
 
-// refresh po odabranoj kategoriji
 const refreshNews = async (categoryId = null) => {
   try {
     const catId = categoryId || feedsStore.selectedCategoryId;
+    // combo dohvaća sve feedove
+    const serviceCatId = catId === 'combo' ? 'all' : catId;
     console.log('Refresham vijesti za kategoriju:', catId);
-    const fetchedNews = await newsService.refreshNews(catId, activeFeedId.value);
+    expectedKey.value = computeExpectedKey(catId);
+    const fetchedNews = await newsService.refreshNews(serviceCatId, activeFeedId.value);
+
+    // stale-check: korisnik je u međuvremenu switchao — ne diraj novi prikaz
+    if (feedsStore.selectedCategoryId !== catId) return;
 
     if (fetchedNews && fetchedNews.length > 0) {
       console.log('Učitano', fetchedNews.length, 'vijesti');
@@ -149,7 +179,7 @@ const refreshNews = async (categoryId = null) => {
 const loadDemoNews = () => {
   console.log('demo vijesti')
   allNews.value = newsService.getMockNews()
-  displayedNews.value = sortedNews.value.slice(0, itemsPerPage)
+  displayedNews.value = rankedNews.value.slice(0, itemsPerPage)
   currentPage.value = 1
 }
 
@@ -165,39 +195,10 @@ const closeModal = () => {
   }, 300)
 }
 
-const handleLike = (newsLink, liked) => {
-  if (liked) {
-    userPreferences.value[newsLink] = 'like'
-  } else {
-    delete userPreferences.value[newsLink]
-  }
-  localStorage.setItem('newsPreferences', JSON.stringify(userPreferences.value))
-}
-
-const handleDislike = (newsLink, disliked) => {
-  if (disliked) {
-    userPreferences.value[newsLink] = 'dislike'
-  } else {
-    delete userPreferences.value[newsLink]
-  }
-  localStorage.setItem('newsPreferences', JSON.stringify(userPreferences.value))
-}
-
-const loadPreferences = () => {
-  try {
-    const saved = localStorage.getItem('newsPreferences')
-    if (saved) {
-      userPreferences.value = JSON.parse(saved)
-    }
-  } catch (e) {
-    console.error('Error loading preferences:', e)
-  }
-}
-
-// HANLDER za promjenu aktivnog feeda
+// promjena aktivnog feeda
 const handleFeedChange = (feedId) => {
   activeFeedId.value = feedId;
-  displayedNews.value = sortedNews.value.slice(0, itemsPerPage);
+  displayedNews.value = rankedNews.value.slice(0, itemsPerPage);
   currentPage.value = 1;
 };
 
@@ -205,21 +206,20 @@ const setupIntersectionObserver = () => {
   if (observer.value) observer.value.disconnect(); // clear stari ako postoji
 
   const options = {
-    root: null, // prozor preglednika
-    rootMargin: '100px', // Okida 100px prije nego element dođe na ekran
-    threshold: 0.1 // Okida čim se vidi 10% elementa
+    root: null,
+    rootMargin: '100px',
+    threshold: 0.1
   };
 
   observer.value = new IntersectionObserver((entries) => {
     const entry = entries[0];
-    // safety provjera
     if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
       console.log('Infinite scroll upaljen'); 
       loadMore();
     }
   }, options);
 
-  // dodan timeout da se dobro izrenderira
+  // čekaj render
   setTimeout(() => {
     if (loadMoreTrigger.value) {
       observer.value.observe(loadMoreTrigger.value);
@@ -228,7 +228,7 @@ const setupIntersectionObserver = () => {
 }
 
 
-//gledaj promjene kategorije
+// promjena kategorije
 watch(
   () => feedsStore.selectedCategoryId,
   async (newCategoryId) => {
@@ -237,7 +237,26 @@ watch(
     currentPage.value = 1
     allNews.value = []
     activeFeedId.value = null
-    await refreshNews(newCategoryId)
+    expectedKey.value = computeExpectedKey(newCategoryId)
+
+    // cache-first: switch je trenutan i moguć i tijekom fetchanja
+    try {
+      const serviceCatId = newCategoryId === 'combo' ? 'all' : newCategoryId;
+      const fetchedNews = await newsService.fetchNews(serviceCatId);
+
+      // stale-check: korisnik je u međuvremenu switchao dalje — ne diraj noviji prikaz
+      if (feedsStore.selectedCategoryId !== newCategoryId) return;
+
+      if (fetchedNews && fetchedNews.length > 0) {
+        syncDisplayedNews(fetchedNews, true)
+      } else {
+        if (allNews.value.length === 0) {
+          displayedNews.value = [];
+        }
+      }
+    } catch (err) {
+      console.error('Error switching category:', err);
+    }
   }
 )
 
@@ -251,31 +270,44 @@ watch(
   }
 );
 
+// cachedNews je globalni — primijeni samo publikaciju ove kategorije
 watch(
   () => newsService.cachedNews.value,
   (latestNews) => {
     if (!Array.isArray(latestNews) || latestNews.length === 0) return
+    if (!expectedKey.value || newsService.publishedCacheKey !== expectedKey.value) {
+      console.log('Ignoriram publikaciju druge kategorije (guard).');
+      return
+    }
     syncDisplayedNews(latestNews, false)
   }
 )
 
+// sortiranje: čisti klijentski re-rank, bez mreže
+watch(sortOrder, () => {
+  if (allNews.value.length > 0) {
+    syncDisplayedNews(allNews.value, true)
+  }
+})
 
-const setSortNewest = async () => {
+
+const setSortNewest = () => {
   sortOrder.value = 'desc';
-  await refreshNews();
 };
 
-const setSortOldest = async () => {
+const setSortOldest = () => {
   sortOrder.value = 'asc';
-  await refreshNews();
 };
 
 onMounted(async () => {
-  loadPreferences()
-  await feedsStore.initializeStore()
-  
+  await feedsStore.ensureReady()
+  // profil interesa za NewsCombo i srca
+  tasteStore.init().catch((e) => console.warn('tasteStore init:', e))
+
   const categoryId = feedsStore.selectedCategoryId;
-  const fetchedNews = await newsService.fetchNews(categoryId, activeFeedId.value);
+  expectedKey.value = computeExpectedKey(categoryId);
+  const serviceCategoryId = categoryId === 'combo' ? 'all' : categoryId;
+  const fetchedNews = await newsService.fetchNews(serviceCategoryId, activeFeedId.value);
 
   if (fetchedNews && fetchedNews.length > 0) {
     syncDisplayedNews(fetchedNews, true)
@@ -295,26 +327,41 @@ onUnmounted(() => {
 })
 </script>
 
-<template>
-   <div class="w-full max-w-4xl mx-auto px-0 sm:px-4 py-2 sm:py-8 overflow-x-hidden">
-    <!-- Feed Switcher -->
-    <div class="px-3 sm:px-0">
+ <template>
+    <div class="w-full max-w-4xl mx-auto px-0 sm:px-4 py-2 sm:py-8">
+    <!-- Feed Switcher — skriven u NewsCombo načinu (rangiraju se svi izvori) -->
+    <div v-if="!isComboMode" class="px-3 sm:px-0">
       <FeedSwitcher @feed-changed="handleFeedChange" />
+    </div>
+
+    <!-- NewsCombo: traka dok algoritam još uči (trajna dok nema dovoljno podataka) -->
+    <div v-if="isComboMode && tasteStore.hydrated && !tasteStore.hasEnoughData"
+         class="alert alert-info py-3 px-4 mx-3 sm:mx-0 mb-4 text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" class="h-5 w-5 shrink-0">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>
+        NewsCombo još uči što te zanima — za sada prikazujem sve vijesti kronološki.
+        Označi nekoliko članaka srcem ili ih otvori.
+      </span>
+      <RouterLink to="/taste" class="btn btn-xs btn-ghost whitespace-nowrap shrink-0">Kako učim?</RouterLink>
     </div>
 
     <!-- head -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 px-3 sm:px-0">
-      <h2 class="text-xl font-semibold">Najnovije vijesti</h2>
+      <h2 class="text-xl font-semibold">{{ isComboMode ? 'Za tebe' : 'Najnovije vijesti' }}</h2>
       <div class="join w-full sm:w-auto">
         <button @click="setSortNewest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
-                :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'" :disabled="loading">
+                :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'">
           Najnovije
         </button>
-        <button @click="setSortOldest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
-                :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'" :disabled="loading">
+        <button v-if="!isComboMode" @click="setSortOldest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
+                :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'">
           Najstarije
         </button>
-        <button @click="refreshNews" class="btn btn-xs sm:btn-sm flex-none join-item btn-outline" :disabled="loading">
+        <button @click="refreshNews" class="btn btn-xs sm:btn-sm flex-none join-item btn-outline">
           <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" fill="none"
                viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -325,9 +372,32 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!--učitavanje state -->
-    <div v-if="loading && displayedNews.length === 0" class="flex justify-center py-16">
-      <span class="loading loading-spinner loading-lg"></span>
+    <!-- djelomično učitavanje: chip umjesto lažne greške -->
+    <div v-if="!loading && newsService.partialInfo.failed > 0 && displayedNews.length > 0"
+         class="flex justify-center mb-3 px-3 sm:px-0">
+      <div class="badge badge-warning badge-outline gap-1.5 text-xs py-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" class="h-3.5 w-3.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+        </svg>
+        Djelomično učitano — {{ newsService.partialInfo.total - newsService.partialInfo.failed }}/{{ newsService.partialInfo.total }} izvora
+      </div>
+    </div>
+
+    <!-- skeleton kartice tijekom učitavanja -->
+    <div v-if="loading && displayedNews.length === 0" class="space-y-3 px-3 sm:px-0">
+      <div v-for="n in 6" :key="n" class="card card-compact bg-base-200 shadow animate-pulse w-full">
+        <div class="card-body p-4 flex gap-3 flex-row items-start">
+          <div class="w-20 h-20 sm:w-32 sm:h-24 rounded-lg bg-base-300/70 flex-shrink-0"></div>
+          <div class="flex-1 space-y-2 py-1 min-w-0">
+            <div class="h-3 w-24 bg-base-300/70 rounded"></div>
+            <div class="h-4 w-full bg-base-300/70 rounded"></div>
+            <div class="h-4 w-2/3 bg-base-300/70 rounded"></div>
+            <div class="h-6 w-32 bg-base-300/70 rounded mt-3"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- greška -->
@@ -370,7 +440,7 @@ onUnmounted(() => {
         </div>
         <div class="timeline-end pl-1 sm:pl-4 py-2 sm:py-4 w-full" style="max-width: calc(100% - 1rem);">
           <div class="w-full">
-            <NewsCardCompact :news="news" :color-class="getTimelineColorClass(news.pubDate)" @like="handleLike" @dislike="handleDislike" @open-modal="openModal" />
+            <NewsCardCompact :news="news" :color-class="getTimelineColorClass(news.pubDate)" :show-score="isComboMode" @open-modal="openModal" />
           </div>
         </div>
 
@@ -399,7 +469,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <NewsModal :news-item="selectedNews" :is-open="isModalOpen" @close="closeModal" @like="handleLike"
-      @dislike="handleDislike" />
+    <NewsModal :news-item="selectedNews" :is-open="isModalOpen" @close="closeModal" />
   </div>
 </template>

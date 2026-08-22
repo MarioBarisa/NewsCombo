@@ -14,7 +14,8 @@ onMounted(async() => {
   themeStore.initTheme()
   await authStore.fetchUser()
   if (authStore.isAuthenticated) {
-    await feedsStore.initializeStore()
+    // jedina točka inicijalizacije — ostali čekaju ensureReady()
+    await feedsStore.ensureReady()
   }
 })
 </script>

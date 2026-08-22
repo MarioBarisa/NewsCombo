@@ -11,7 +11,7 @@ const feedsStore = useFeedsStore();
 const newsService = useNewsGlobal();
 const showSetupModal = ref(false);
 const isSettingUp = ref(false);
-const isPulling = ref(false);   // Is pulling to refresh
+const isPulling = ref(false);
 const startY = ref(0);
 const pullDistance = ref(0);
 
@@ -42,7 +42,9 @@ const handleTouchMove = (e) => {
 const handleTouchEnd = async () => {
   if (isPulling.value && pullDistance.value > 60) {
     const categoryId = feedsStore.selectedCategoryId;
-    await newsService.refreshNews(categoryId);
+    // combo dohvaća sve feedove
+    const serviceCatId = categoryId === 'combo' ? 'all' : categoryId;
+    await newsService.refreshNews(serviceCatId);
   }
   isPulling.value = false;
   pullDistance.value = 0;
@@ -62,8 +64,9 @@ const isAISummarySelected = computed(() => {
 
 //inicjallizacija novih korisnika
 onMounted(async () => {
-  await feedsStore.initializeStore();
-  if (feedsStore.needsInitialSetup) {
+  await feedsStore.ensureReady();
+  // setup modal samo ako feedovi stvarno ne postoje
+  if (!feedsStore.isLoading && feedsStore.needsInitialSetup) {
     showSetupModal.value = true;
   }
 });
@@ -85,7 +88,7 @@ function handleSkipSetup() {
 
 <template>
   <main @touchstart.passive="handleTouchStart" @touchmove.passive="handleTouchMove" @touchend.passive="handleTouchEnd" class="transition-transform duration-200" :style="isPulling ? `transform: translateY(${pullDistance * 0.4}px)` : ''">
-    <!-- Pull to refresh hint -->
+    <!-- pull-to-refresh -->
     <div v-if="pullDistance > 0 && !isBackgroundLoading" class="absolute top-0 left-0 w-full flex justify-center items-center pointer-events-none z-50 h-8" style="transform: translateY(-100%);">
       <div class="badge badge-primary gap-2" :class="{'opacity-50': pullDistance < 60, 'opacity-100 font-bold': pullDistance >= 60}">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
