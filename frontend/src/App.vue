@@ -12,10 +12,10 @@ const authStore = useAuthStore()
 
 onMounted(async() => {
   themeStore.initTheme()
-  await authStore.fetchUser()
+  await authStore.fetchUser().catch(() => {})
   if (authStore.isAuthenticated) {
     // jedina točka inicijalizacije — ostali čekaju ensureReady()
-    await feedsStore.ensureReady()
+    await feedsStore.ensureReady().catch(() => {})
   }
 })
 </script>

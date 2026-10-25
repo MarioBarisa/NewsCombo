@@ -4,8 +4,12 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 import cors from 'cors';
+const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5173'];
+if (process.env.NODE_ENV !== 'production') {
+    allowedOrigins.push('http://localhost:5173', 'http://127.0.0.1:5173');
+}
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true
   }));
 const PORT = 3005;
@@ -28,12 +32,10 @@ import createProfileRoutes from "./routes/profileRoutes.js";
 import { authMiddleware } from "./middleware/auth.js";
 
 const logger = (req, res, next) => {
-    const timeStamp = new Date().toISOString();
-    console.log("Vrijeme: ", timeStamp);
-    console.log("Ruta", req.originalUrl);
-    console.log(req.method);
-    console.log(req.headers);
-    console.log(req.body);
+    const startedAt = Date.now();
+    res.on('finish', () => {
+        console.log(req.method, req.path, res.statusCode, `${Date.now() - startedAt}ms`);
+    });
     next();
 };
 

@@ -104,7 +104,10 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast toast-top toast-center z-50`;
   const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
-  toast.innerHTML = `<div class="alert ${alertClass}"><span>${message}</span></div>`;
+  const alert = document.createElement('div');
+  alert.className = `alert ${alertClass}`;
+  alert.textContent = message;
+  toast.appendChild(alert);
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }

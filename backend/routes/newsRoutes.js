@@ -1,58 +1,9 @@
 import express from "express";
+import { rssService } from '../services/rssService.js';
+import { fetchPublicText, parsePublicUrl } from '../services/publicFetch.js';
+import { nextNumericId, removeFeedReferences } from '../services/numericIds.js';
 
-function extractImageUrl(item) {
-  // 1. Standardni enclosure 
-  if (item.enclosure && item.enclosure.url) {
-    return item.enclosure.url;
-  }
-
-  // 2. (media:content, media:thumbnail)
-  if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url) {
-    return item['media:content']['$'].url;
-  }
-  
-  if (item['media:thumbnail'] && item['media:thumbnail']['$'] && item['media:thumbnail']['$'].url) {
-    return item['media:thumbnail']['$'].url;
-  }
-
-  // 3.  (array)
-  if (item['media:content'] && Array.isArray(item['media:content']) && item['media:content'][0]) {
-    const media = item['media:content'][0];
-    if (media['$'] && media['$'].url) {
-      return media['$'].url;
-    }
-  }
-
-  // 4. 
-  const htmlContent = item['content:encoded'] || item.content || item.description || '';
-  if (htmlContent) {
-    const imgMatch = htmlContent.match(/<img[^>]+src=["']([^"']+)["']/i);
-    if (imgMatch && imgMatch[1]) {
-      return imgMatch[1];
-    }
-  }
-
-  return null;
-}
-
-function extractFeedImage(feed) {
-  if (!feed) return null;
-
-  if (typeof feed.logo === 'string' && feed.logo) return feed.logo;
-  if (typeof feed.icon === 'string' && feed.icon) return feed.icon;
-
-  const image = feed.image;
-  if (!image) return null;
-  if (typeof image === 'string') return image;
-
-  const imageUrl = image.url;
-  if (typeof imageUrl === 'string' && imageUrl) return imageUrl;
-  if (Array.isArray(imageUrl) && imageUrl[0]) return imageUrl[0];
-
-  return null;
-}
-
-export default function createNewsRoutes(db) {
+export default function createNewsRoutes(db, rss = rssService) {
   const router = express.Router();
 
   // INICIJALNI PODACI
@@ -178,8 +129,8 @@ export default function createNewsRoutes(db) {
 
     try {
       const collection = db.collection("rss_feedovi");
-      const sviFeedi = await collection.find({ userId: req.user.userId }).toArray();
-      const noviId = Math.max(...sviFeedi.map(f => f.id), 0) + 1;
+      parsePublicUrl(url);
+      const noviId = await nextNumericId(db, 'rss_feedovi', req.user.userId);
 
       const result = await collection.insertOne({
         id: noviId,
@@ -205,6 +156,8 @@ export default function createNewsRoutes(db) {
     try {
       const feedId = parseInt(req.params.id);
       const collection = db.collection("rss_feedovi");
+      await nextNumericId(db, 'rss_feedovi', req.user.userId);
+      await removeFeedReferences(db, req.user.userId, feedId);
       const result = await collection.deleteOne({ id: feedId, userId: req.user.userId });
 
       if (result.deletedCount === 0) {
@@ -226,6 +179,7 @@ export default function createNewsRoutes(db) {
         return res.status(400).json({ error: "Nedostaju obavezna polja" });
       }
 
+      parsePublicUrl(url);
       const collection = db.collection("rss_feedovi");
       const result = await collection.updateOne(
         { id: feedId, userId: req.user.userId },
@@ -326,8 +280,7 @@ export default function createNewsRoutes(db) {
 
     try {
       const collection = db.collection("grupe");
-      const sveGrupe = await collection.find({ userId: req.user.userId }).toArray();
-      const noviId = Math.max(...sveGrupe.map(g => g.id), 0) + 1;
+      const noviId = await nextNumericId(db, 'grupe', req.user.userId);
 
       const result = await collection.insertOne({
         id: noviId,
@@ -351,6 +304,7 @@ export default function createNewsRoutes(db) {
     try {
       const grupaId = parseInt(req.params.id);
       const collection = db.collection("grupe");
+      await nextNumericId(db, 'grupe', req.user.userId);
       const result = await collection.deleteOne({ id: grupaId, userId: req.user.userId });
 
       if (result.deletedCount === 0) {
@@ -579,340 +533,75 @@ export default function createNewsRoutes(db) {
     }
   });
 
-  //Provjera RSS LINKA -> validacija
-router.get("/rss/validate", async (req, res) => {
-  const { url } = req.query;
-
-  if (!url) {
-    return res.status(400).json({ 
-      valid: false, 
-      message: 'URL nije naveden' 
-    });
-  }
-
-  try {
-    const Parser = (await import('rss-parser')).default;
-    const parser = new Parser({
-      timeout: 5000, 
-      headers: {
-        'User-Agent': 'NewsCombo RSS Validator/1.0',
-      }
-    });
-
-    const feed = await parser.parseURL(url);
-
-    if (feed && feed.items && feed.items.length > 0) {
-      return res.status(200).json({
-        valid: true,
-        itemCount: feed.items.length,
-        feedTitle: feed.title || 'N/A',
-        message: 'RSS feed je validan'
-      });
-    } else {
-      return res.status(200).json({
-        valid: false,
-        message: 'RSS feed ne sadrži vijesti'
-      });
+  router.get('/rss/validate', async (req, res) => {
+    try {
+      const feed = await rss.getFeed(req.query.url);
+      res.json({ valid: true, itemCount: feed.items.length, feedTitle: feed.title, message: 'RSS feed je valjan' });
+    } catch (error) {
+      res.status(400).json({ valid: false, message: error.message });
     }
-  } catch (error) {
-    console.error('Greška pri validaciji RSS-a:', error.message);
-    return res.status(200).json({
-      valid: false,
-      message: 'Link nije validan RSS feed ili je nedostupan',
-      error: error.message
-    });
-  }
-});
-  
-  
-  // RSS PARSER ENDPOINT 
-router.get("/rss/parse/:feedId", async (req, res) => {
-  try {
-    const feedId = parseInt(req.params.feedId);
-    const feedCollection = db.collection("rss_feedovi");
-    
-    const feed = await feedCollection.findOne({ 
-      id: feedId, 
-      userId: req.user.userId 
-    });
-    
-    if (!feed) {
-      return res.status(404).json({ error: "Feed nije pronađen" });
+  });
+
+  router.get('/rss/parse/:feedId', async (req, res) => {
+    try {
+      const feed = await db.collection('rss_feedovi').findOne({ id: Number(req.params.feedId), userId: req.user.userId });
+      if (!feed) return res.status(404).json({ error: 'Feed nije pronađen' });
+      const parsed = await rss.getFeed(feed.url);
+      const articles = parsed.items.map(item => ({ ...item, source: feed.naziv, feedId: feed.id, category: feed.kategorija, imageUrl: item.thumbnail }));
+      res.json({ feedId: feed.id, feedName: feed.naziv, articles, totalCount: articles.length });
+    } catch (error) {
+      res.status(502).json({ error: 'Greška pri parsiranju RSS-a', details: error.message });
     }
+  });
 
-    const Parser = (await import('rss-parser')).default;
-    const parser = new Parser({
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'NewsCombo/1.0',
-      }
-    });
-
-    const rssFeed = await parser.parseURL(feed.url);
-    
-    const articles = rssFeed.items.slice(0, 30).map(item => ({
-      title: item.title || "Bez naslova",
-      description: item.contentSnippet || item.description || "",
-      content: item.content || item.description || "",
-      link: item.link,
-      pubDate: item.pubDate,
-      isoDate: item.isoDate,
-      guid: item.guid || item.link,
-      source: feed.naziv,
-      feedId: feed.id,
-      category: feed.kategorija,
-      imageUrl: extractImageUrl(item),  
-      enclosure: item.enclosure  
-    }));
-    
-
-    res.json({
-      feedId: feed.id,
-      feedName: feed.naziv,
-      articles: articles,
-      totalCount: articles.length
-    });
-
-  } catch (error) {
-    console.error('RSS parse greška:', error);
-    res.status(500).json({ 
-      error: "Greška pri parsiranju RSS-a", 
-      details: error.message 
-    });
-  }
-});
-
-// Batch endpoint
-router.post("/rss/parse-multiple", async (req, res) => {
-  try {
+  router.post('/rss/parse-multiple', async (req, res) => {
     const { feedIds } = req.body;
-    
-    if (!feedIds || !Array.isArray(feedIds)) {
-      return res.status(400).json({ error: "feedIds mora biti niz" });
-    }
-
-    const feedCollection = db.collection("rss_feedovi");
-    const Parser = (await import('rss-parser')).default;
-    const parser = new Parser({
-      timeout: 10000,
-      headers: { 'User-Agent': 'NewsCombo/1.0' }
-    });
-
-    const results = [];
-
-    for (const feedId of feedIds) {
-      try {
-        const feed = await feedCollection.findOne({ 
-          id: parseInt(feedId), 
-          userId: req.user.userId 
-        });
-        
+    if (!Array.isArray(feedIds) || feedIds.length > 20) return res.status(400).json({ error: 'Navedi najviše 20 feedova' });
+    try {
+      const feeds = [];
+      const failures = [];
+      for (const feedId of feedIds) {
+        const feed = await db.collection('rss_feedovi').findOne({ id: Number(feedId), userId: req.user.userId });
         if (!feed) continue;
-
-        const rssFeed = await parser.parseURL(feed.url);
-        
-        const articles = rssFeed.items.slice(0, 30).map(item => ({
-          title: item.title || "Bez naslova",
-          description: item.contentSnippet || item.description || "",
-          content: item.content || item.description || "",
-          link: item.link,
-          pubDate: item.pubDate,
-          isoDate: item.isoDate,
-          guid: item.guid || item.link,
-          source: feed.naziv,
-          feedId: feed.id,
-          category: feed.kategorija,
-          imageUrl: extractImageUrl(item),  
-          enclosure: item.enclosure
-        }));
-        
-
-        results.push({
-          feedId: feed.id,
-          feedName: feed.naziv,
-          articles: articles
-        });
-
-      } catch (error) {
-        console.error(`Feed ${feedId} greška:`, error.message);
-        continue;
-      }
-    }
-
-    const allArticles = results.flatMap(r => r.articles);
-
-    res.json({
-      feeds: results,
-      totalArticles: allArticles.length,
-      articles: allArticles
-    });
-
-  } catch (error) {
-    res.status(500).json({ 
-      error: "Greška pri parsiranju feedova", 
-      details: error.message 
-    });
-  }
-});
-  
-  // RSS PROXY RUTA (za izbjegavanje CORS-a)
-  // TTL cache u memoriji: dedupe burstova (više klijenata / refreshova) i brzi odgovori
-  const rssTtlCache = new Map(); // url -> { data, ts }
-  const RSS_CACHE_TTL_MS = 60 * 1000;
-  const RSS_CACHE_MAX_ENTRIES = 500;
-
-  const cacheGetFresh = (url) => {
-    const hit = rssTtlCache.get(url);
-    if (!hit) return null;
-    if (Date.now() - hit.ts > RSS_CACHE_TTL_MS) {
-      rssTtlCache.delete(url);
-      return null;
-    }
-    return hit.data;
-  };
-
-  const cacheSet = (url, data) => {
-    rssTtlCache.set(url, { data, ts: Date.now() });
-    if (rssTtlCache.size > RSS_CACHE_MAX_ENTRIES) {
-      let oldestKey = null;
-      let oldestTs = Infinity;
-      for (const [key, val] of rssTtlCache) {
-        if (val.ts < oldestTs) { oldestTs = val.ts; oldestKey = key; }
-      }
-      if (oldestKey) rssTtlCache.delete(oldestKey);
-    }
-  };
-
-router.post("/rss/fetch", async (req, res) => {
-  const { urls } = req.body; 
-  
-  if (!urls || !Array.isArray(urls) || urls.length === 0) {
-    return res.status(400).json({ error: "URLs array je obavezan" });
-  }
-
-  if (urls.length > 20) {
-    return res.status(400).json({ error: "Maksimum 20 feedova odjednom" });
-  }
-
-  try {
-    const Parser = (await import('rss-parser')).default;
-    const parser = new Parser({
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'NewsCombo/1.0'
-      },
-      customFields: {
-        item: [
-          ['content', 'originalContent'],        
-          ['content:encoded', 'encodedContent'], 
-          'media:content', 
-          'media:thumbnail'
-        ]
-      }
-    });
-
-    const results = await Promise.allSettled(
-      urls.map(async (url) => {
-        const cached = cacheGetFresh(url);
-        if (cached) return cached;
         try {
-          const feed = await parser.parseURL(url);
-          const data = {
-            url,
-            success: true,
-            items: feed.items.slice(0, 20),
-            title: feed.title,
-            description: feed.description,
-            feedImage: extractFeedImage(feed)
-          };
-          cacheSet(url, data);
-          return data;
+          const parsed = await rss.getFeed(feed.url);
+          feeds.push({ feedId: feed.id, feedName: feed.naziv, articles: parsed.items.map(item => ({ ...item, source: feed.naziv, feedId: feed.id, category: feed.kategorija, imageUrl: item.thumbnail })) });
         } catch (error) {
-          return {
-            url,
-            success: false,
-            error: error.message
-          };
+          failures.push({ feedId, error: error.message });
         }
-      })
-    );
-
-    const formattedResults = results.map(result => 
-      result.status === 'fulfilled' ? result.value : result.reason
-    );
-
-    res.status(200).json({ feeds: formattedResults });
-  } catch (error) {
-    res.status(500).json({ error: "Greška pri fetchanju feedova", details: error.message });
-  }
-});
-
-router.get("/proxy-article", async (req, res) => {
-  const { url } = req.query;
-  
-  if (!url) {
-    return res.status(400).json({ error: 'URL parametar je obavezan' });
-  }
-
-  // SSRF zaštita: blokiraj privatne/loopback adrese i ne-http protokole
-  try {
-    const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return res.status(400).json({ error: 'Nedozvoljen protokol' });
-    }
-    const hostname = parsed.hostname.toLowerCase();
-    const blockedHosts = ['localhost', '0.0.0.0', '::1', '[::1]'];
-    if (blockedHosts.includes(hostname) || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-      return res.status(400).json({ error: 'Nedozvoljen URL' });
-    }
-    // IPv4 privatni rasponi
-    const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-    if (ipv4) {
-      const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-      const isPrivate =
-        a === 10 ||
-        a === 127 ||
-        (a === 172 && b >= 16 && b <= 31) ||
-        (a === 192 && b === 168) ||
-        (a === 169 && b === 254) ||
-        a === 0;
-      if (isPrivate) {
-        return res.status(400).json({ error: 'Nedozvoljen URL' });
       }
+      const articles = feeds.flatMap(feed => feed.articles);
+      res.json({ feeds, failures, articles, totalArticles: articles.length });
+    } catch (error) {
+      res.status(500).json({ error: 'Greška pri dohvatu feedova' });
     }
-  } catch (e) {
-    return res.status(400).json({ error: 'Neispravan URL' });
-  }
+  });
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'hr-HR,hr;q=0.9,en;q=0.8'
-      },
-      timeout: 8000
-    });
-
-    if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: `Izvor vratio status ${response.status}` 
-      });
+  router.post('/rss/fetch', async (req, res) => {
+    const { urls, force = false } = req.body;
+    if (!Array.isArray(urls) || urls.length === 0 || urls.length > 20 || urls.some(url => typeof url !== 'string')) {
+      return res.status(400).json({ error: 'Navedi od 1 do 20 RSS URL-ova' });
     }
+    const feeds = await Promise.all(urls.map(async url => {
+      try {
+        const feed = await rss.getFeed(url, { force: force === true });
+        return { url, success: true, ...feed };
+      } catch (error) {
+        return { url, success: false, error: error.message };
+      }
+    }));
+    res.json({ feeds });
+  });
 
-    const html = await response.text();
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
-
-  } catch (error) {
-    console.error('Proxy error:', error.message);
-    res.status(500).json({ 
-      error: 'Greška pri dohvaćanju članka',
-      details: error.message 
-    });
-  }
-});
-
+  router.get('/proxy-article', async (req, res) => {
+    try {
+      const response = await fetchPublicText(req.query.url, { timeout: 8000, maxBytes: 3 * 1024 * 1024 });
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+      res.type('text/html').send(response.text);
+    } catch (error) {
+      res.status(400).json({ error: 'Članak nije dostupan', details: error.message });
+    }
+  });
 
   return router;
 }

@@ -12,16 +12,19 @@ async function connectToDatabase() {
         throw new Error("MongoDB URL nije postavljen u .env datoteci.");
       }
 
+    const client = new MongoClient(URL)
     try {
-
-        const client = new MongoClient(URL)
         await client.connect();
         console.log("Uspjeh. SPOJEN NA DB.");
         let db = client.db("NewsCombo")
+        await db.collection('rss_feedovi').createIndex({ userId: 1, id: 1 }, { unique: true });
+        await db.collection('grupe').createIndex({ userId: 1, id: 1 }, { unique: true });
         return db;
         
     } catch (error) {
-        console.error("Došlo je do greške u spajanju.", error)
+        await client.close();
+        console.error("Spajanje ili provjera indeksa nije uspjela.")
+        throw error;
     }
     
 }

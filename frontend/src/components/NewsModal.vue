@@ -179,6 +179,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { API_URL } from '../config.js';
+import { sanitizeContent, escapeHtml, safeArticleUrl } from '../Services/articleHtml.js';
 import { useTasteStore } from '../stores/tasteStore.js';
 
 const props = defineProps({
@@ -198,6 +199,8 @@ const imageError = ref(false)
 const isEnhancing = ref(false)
 const enhancedContent = ref('')
 const isBookmarked = ref(false)
+let contentController = null
+let contentGeneration = 0
 
 const isLiked = computed(() => (props.newsItem?.link ? taste.isLiked(props.newsItem.link) : false))
 const isDisliked = computed(() => (props.newsItem?.link ? taste.isDisliked(props.newsItem.link) : false))
@@ -282,16 +285,7 @@ const extractImageFromHtml = (html) => {
   return match ? match[1] : null
 }
 
-const cleanHtml = (html) => {
-  if (!html) return ''
-
-    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-  html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-  html = html.replace(/\s+/g, ' ').trim()
-
-  return html
-}
+const cleanHtml = html => sanitizeContent(html, props.newsItem?.link || props.newsItem?.sourceUrl)
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -322,14 +316,15 @@ const handleImageError = () => {
   imageError.value = true
 }
 
-const enhanceContent = async () => {
-  if (!props.newsItem?.link) return
+const enhanceContent = async (article, controller, generation) => {
+  if (!safeArticleUrl(article?.link)) return
 
   isEnhancing.value = true
 
   try {
 
-        let htmlContent = await fetchWithProxy(props.newsItem.link);
+        let htmlContent = await fetchWithProxy(article.link, controller.signal);
+    if (generation !== contentGeneration || controller.signal.aborted) return
 
 
     if (htmlContent) {
@@ -368,13 +363,13 @@ const enhanceContent = async () => {
             })
             .map(el => {
               const tagName = el.tagName.toLowerCase()
-              const text = el.textContent.trim()
+              const text = escapeHtml(el.textContent.trim())
 
               if (tagName === 'h2') return `<h2 class="text-2xl font-bold mt-6 mb-3">${text}</h2>`
               if (tagName === 'h3') return `<h3 class="text-xl font-bold mt-4 mb-2">${text}</h3>`
               if (tagName === 'blockquote') return `<blockquote class="border-l-4 border-primary pl-4 italic my-4">${text}</blockquote>`
               if (tagName === 'ul' || tagName === 'ol') {
-                const items = Array.from(el.querySelectorAll('li')).map(li => `<li>${li.textContent.trim()}</li>`).join('')
+                const items = Array.from(el.querySelectorAll('li')).map(li => `<li>${escapeHtml(li.textContent.trim())}</li>`).join('')
                 return tagName === 'ul' ? `<ul class="list-disc pl-6 my-3">${items}</ul>` : `<ol class="list-decimal pl-6 my-3">${items}</ol>`
               }
 
@@ -383,7 +378,7 @@ const enhanceContent = async () => {
             .slice(0, 30)
 
           if (paragraphs.length > 5) {
-            enhancedContent.value = paragraphs.join('')
+            enhancedContent.value = sanitizeContent(paragraphs.join(''), article.link)
             return
           }
         }
@@ -392,43 +387,31 @@ const enhanceContent = async () => {
   } catch (error) {
     console.warn('Greška pri učitavanju:', error.message)
   } finally {
-    isEnhancing.value = false
+    if (generation === contentGeneration) isEnhancing.value = false
   }
 }
 
 
-const fetchWithProxy = async (url) => {
+const fetchWithProxy = async (url, signal) => {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal.aborted) controller.abort();
+  else signal.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    const proxyUrl = `${BACKEND_PROXY}${encodeURIComponent(url)}`;
-    const token = localStorage.getItem('token');
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: {
-        'Accept': 'text/html',
-        'Authorization': `Bearer ${token}` 
-      }
+    const response = await fetch(`${BACKEND_PROXY}${encodeURIComponent(url)}`, {
+      headers: { Accept: 'text/html', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      signal: controller.signal
     });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      return await response.text();
-    }
-
-    console.warn(`Backend proxy vratio status ${response.status}`);
+    if (!response.ok) return null;
+    return await response.text();
+  } catch {
     return null;
-  } catch (err) {
-    console.warn('Backend proxy greška:', err.message);
-    return null;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener('abort', abort);
   }
 };
-
-
 
 const toggleLike = () => {
   taste.toggleHeart(props.newsItem)
@@ -442,10 +425,11 @@ const toggleDislike = () => {
 const toggleBookmark = async () => {
   const url = `${API_URL}/bookmarks`;
   const method = isBookmarked.value ? 'DELETE' : 'POST';
+  const article = props.newsItem;
   const token = localStorage.getItem('token'); 
 
   try {
-    const bodyContent = enhancedContent.value || props.newsItem.description || '';
+    const bodyContent = enhancedContent.value || props.newsItem.content || props.newsItem.description || '';
 
     const response = await fetch(url, {
       method: method,
@@ -462,7 +446,7 @@ const toggleBookmark = async () => {
       })
     });
 
-    if (response.ok) {
+    if (response.ok && props.newsItem === article) {
       const nowBookmarked = !isBookmarked.value;
       isBookmarked.value = nowBookmarked;
       if (nowBookmarked && props.newsItem) {
@@ -484,30 +468,22 @@ const handleEscapeKey = (event) => {
   }
 }
 
-watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
-    document.body.style.overflow = 'hidden'
-    enhancedContent.value = '' 
-    if (props.newsItem) taste.recordOpen(props.newsItem)
-    setTimeout(() => {
-      enhanceContent()
-    }, 100)
-  } else {
-    document.body.style.overflow = ''
-  }
-})
-
-// watcher za promjenu članka (bookmark reset + open signal + dohvat cijelog članka)
-watch(() => props.newsItem, () => {
-  isBookmarked.value = false;
-  if (props.isOpen) {
-    enhancedContent.value = ''
-    if (props.newsItem) taste.recordOpen(props.newsItem)
-
-    setTimeout(() => {
-      enhanceContent()
-    }, 100)
-  }
+watch([() => props.isOpen, () => props.newsItem], ([open, article], previous, onCleanup) => {
+  contentGeneration++
+  const generation = contentGeneration
+  contentController?.abort()
+  enhancedContent.value = ''
+  isEnhancing.value = false
+  isBookmarked.value = false
+  imageError.value = false
+  document.body.style.overflow = open ? 'hidden' : ''
+  if (!open || !article) return
+  if (article.link) taste.recordOpen(article)
+  if (article.hasFullContent) return
+  contentController = new AbortController()
+  const controller = contentController
+  void enhanceContent(article, controller, generation)
+  onCleanup(() => controller.abort())
 })
 
 onMounted(() => {
@@ -515,6 +491,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  contentGeneration++
+  contentController?.abort()
   window.removeEventListener('keydown', handleEscapeKey)
   document.body.style.overflow = ''
 })

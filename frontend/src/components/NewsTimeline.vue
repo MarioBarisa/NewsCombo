@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useNewsGlobal, cacheKeyFor } from '../Services/NewsGlobal'
+import { useNewsGlobal, cacheKeyFor, cancelCategoryRequest } from '../Services/NewsGlobal'
 import { useFeedsStore } from '../stores/feedStore'
 import { useTasteStore } from '../stores/tasteStore'
 import NewsCardCompact from './NewsCardCompact.vue'
@@ -10,320 +10,121 @@ import FeedSwitcher from './FeedSwitcher.vue'
 const newsService = useNewsGlobal()
 const feedsStore = useFeedsStore()
 const tasteStore = useTasteStore()
-
-const allNews = ref([])
-const displayedNews = ref([])
-const currentPage = ref(1)
 const itemsPerPage = 15
+const visibleCount = ref(itemsPerPage)
 const sortOrder = ref('desc')
 const loadMoreTrigger = ref(null)
-const observer = ref(null)
-const loadingMore = ref(false)
+let observer = null
+let requestKey = null
 const selectedNews = ref(null)
 const isModalOpen = ref(false)
 const activeFeedId = ref(null)
-const loading = computed(() => newsService.isLoading.value)
-const error = computed(() => newsService.error.value)
-
-// NewsCombo način rada — personalizirani kronološki feed
+const demoNews = ref(null)
+const loading = computed(() => feedsStore.isLoading || newsService.isLoading.value)
+const error = computed(() => feedsStore.error || newsService.error.value)
+const partialInfo = newsService.partialInfo
+const stale = computed(() => newsService.snapshot.value.stale)
+const allNews = computed(() => demoNews.value || newsService.cachedNews.value)
 const isComboMode = computed(() => feedsStore.selectedCategoryId === 'combo')
-
-// očekivani cache ključ — guard protiv cross-category prikaza
-const expectedKey = ref(null)
-const computeExpectedKey = (categoryId) => {
-  const serviceCatId = categoryId === 'combo' ? 'all' : (categoryId || 'all');
-  let feeds;
-  if (!serviceCatId || serviceCatId === 'all') {
-    feeds = feedsStore.availableFeeds;
-  } else {
-    const cat = feedsStore.categories.find((c) => c.id === serviceCatId);
-    feeds = cat ? cat.feeds : [];
-  }
-  return cacheKeyFor(serviceCatId, feeds);
-}
-
+const expectedKey = computed(() => cacheKeyFor(feedsStore.selectedCategoryId, feedsStore.selectedFeeds))
+const filteredNews = computed(() => {
+  if (!activeFeedId.value) return allNews.value
+  return allNews.value.filter(news => news.feedId === activeFeedId.value)
+})
 const sortedNews = computed(() => {
   const sorted = [...filteredNews.value]
-  return sorted.sort((a, b) => {
-    const tsA = Number.isNaN(new Date(a.pubDate).getTime()) ? Number.NEGATIVE_INFINITY : new Date(a.pubDate).getTime()
-    const tsB = Number.isNaN(new Date(b.pubDate).getTime()) ? Number.NEGATIVE_INFINITY : new Date(b.pubDate).getTime()
-    return sortOrder.value === 'desc' ? tsB - tsA : tsA - tsB
+  sorted.sort((a, b) => {
+    const aTime = Date.parse(a.pubDate) || 0
+    const bTime = Date.parse(b.pubDate) || 0
+    return sortOrder.value === 'desc' ? bTime - aTime : aTime - bTime
   })
+  return sorted
 })
-
-// personalizacija unutar kantica (samo combo način)
-const rankedNews = computed(() => {
-  if (!isComboMode.value) return sortedNews.value
-  return tasteStore.rankArticles(sortedNews.value)
-})
-
-const hasMore = computed(() => {
-  const totalAvailable = rankedNews.value.length
-  return totalAvailable > 0 && displayedNews.value.length < totalAvailable
-})
-
-// filtriraj po odabranom feedu
-const filteredNews = computed(() => {
-  if (!activeFeedId.value) {
-    return allNews.value;
-  }
-  return allNews.value.filter(news => news.feedId === activeFeedId.value);
-});
-
-const syncDisplayedNews = (items, resetPage = false) => {
-  if (!Array.isArray(items)) return
-  allNews.value = items
-
-  if (resetPage) {
-    currentPage.value = 1
-    displayedNews.value = rankedNews.value.slice(0, itemsPerPage)
-    return
-  }
-
-  const currentVisibleCount = displayedNews.value.length || itemsPerPage
-  displayedNews.value = rankedNews.value.slice(0, Math.max(itemsPerPage, currentVisibleCount))
-}
-
-const formatTime = (dateString) => {
-  if (!dateString) return ''
-  try {
-    return new Date(dateString).toLocaleTimeString('hr-HR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (e) {
-    return ''
-  }
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  try {
-    const d = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now - d)
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) {
-      return 'Danas'
-    } else if (diffDays === 1) {
-      return 'Jučer'
-    } else if (diffDays < 7) {
-      return `Prije ${diffDays} dana`
-    }
-
-    return d.toLocaleDateString('hr-HR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
-  } catch (e) {
-    return dateString
-  }
-}
-
-const getTimelineColorClass = (dateString) => {
-  if (!dateString) return 'text-base-300';
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return 'text-base-300';
-
-  const diffHours = (new Date() - d) / (1000 * 60 * 60);
-
-  if (diffHours < 2) return 'text-error'; // vrlo svježe
-  if (diffHours < 6) return 'text-warning'; // svježe
-  if (diffHours < 24) return 'text-primary'; // danas
-  return 'text-base-300';
-};
+const rankedNews = computed(() => isComboMode.value ? tasteStore.rankArticles(sortedNews.value) : sortedNews.value)
+const displayedNews = computed(() => rankedNews.value.slice(0, visibleCount.value))
+const hasMore = computed(() => displayedNews.value.length < rankedNews.value.length)
 
 const loadMore = () => {
-  if (loadingMore.value || !hasMore.value) return
-
-  loadingMore.value = true
-  const start = displayedNews.value.length
-  const end = Math.min(start + itemsPerPage, rankedNews.value.length)
-  const newItems = rankedNews.value.slice(start, end)
-
-  setTimeout(() => {
-    displayedNews.value.push(...newItems)
-    loadingMore.value = false
-  }, 300)
+  visibleCount.value += itemsPerPage
 }
 
-const refreshNews = async (categoryId = null) => {
+const refreshNews = async () => {
+  demoNews.value = null
+  visibleCount.value = itemsPerPage
   try {
-    const catId = categoryId || feedsStore.selectedCategoryId;
-    // combo dohvaća sve feedove
-    const serviceCatId = catId === 'combo' ? 'all' : catId;
-    console.log('Refresham vijesti za kategoriju:', catId);
-    expectedKey.value = computeExpectedKey(catId);
-    const fetchedNews = await newsService.refreshNews(serviceCatId, activeFeedId.value);
-
-    // stale-check: korisnik je u međuvremenu switchao — ne diraj novi prikaz
-    if (feedsStore.selectedCategoryId !== catId) return;
-
-    if (fetchedNews && fetchedNews.length > 0) {
-      console.log('Učitano', fetchedNews.length, 'vijesti');
-      syncDisplayedNews(fetchedNews, true)
-    } else {
-      console.warn('Nema vijesti za ovu kategoriju');
-      if (allNews.value.length === 0) {
-        displayedNews.value = [];
-      }
-    }
-  } catch (err) {
-    console.error('Error refreshing news:', err);
-  }
-};
-
+    await newsService.refreshNews(feedsStore.selectedCategoryId, activeFeedId.value)
+  } catch {}
+}
 
 const loadDemoNews = () => {
-  console.log('demo vijesti')
-  allNews.value = newsService.getMockNews()
-  displayedNews.value = rankedNews.value.slice(0, itemsPerPage)
-  currentPage.value = 1
+  demoNews.value = newsService.getMockNews()
+  visibleCount.value = itemsPerPage
 }
 
-const openModal = (news) => {
+const openModal = news => {
   selectedNews.value = news
   isModalOpen.value = true
 }
-
 const closeModal = () => {
   isModalOpen.value = false
-  setTimeout(() => {
-    selectedNews.value = null
-  }, 300)
+  selectedNews.value = null
+}
+const handleFeedChange = feedId => {
+  activeFeedId.value = feedId
+  visibleCount.value = itemsPerPage
 }
 
-// promjena aktivnog feeda
-const handleFeedChange = (feedId) => {
-  activeFeedId.value = feedId;
-  displayedNews.value = rankedNews.value.slice(0, itemsPerPage);
-  currentPage.value = 1;
-};
+watch([expectedKey, () => feedsStore.initialized, () => feedsStore.selectedCategoryId], async () => {
+  if (requestKey && requestKey !== expectedKey.value) cancelCategoryRequest(requestKey)
+  requestKey = expectedKey.value
+  demoNews.value = null
+  visibleCount.value = itemsPerPage
+  activeFeedId.value = null
+  closeModal()
+  if (!feedsStore.initialized) return
+  try { await newsService.fetchNews(feedsStore.selectedCategoryId) } catch {}
+}, { immediate: true })
+watch(sortOrder, () => { visibleCount.value = itemsPerPage })
+watch([loadMoreTrigger, () => displayedNews.value.length], () => {
+  observer?.disconnect()
+  if (!loadMoreTrigger.value || !hasMore.value) return
+  observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && hasMore.value) loadMore()
+  }, { rootMargin: '100px', threshold: 0.1 })
+  observer.observe(loadMoreTrigger.value)
+}, { flush: 'post' })
 
-const setupIntersectionObserver = () => {
-  if (observer.value) observer.value.disconnect(); // clear stari ako postoji
-
-  const options = {
-    root: null,
-    rootMargin: '100px',
-    threshold: 0.1
-  };
-
-  observer.value = new IntersectionObserver((entries) => {
-    const entry = entries[0];
-    if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
-      console.log('Infinite scroll upaljen'); 
-      loadMore();
-    }
-  }, options);
-
-  // čekaj render
-  setTimeout(() => {
-    if (loadMoreTrigger.value) {
-      observer.value.observe(loadMoreTrigger.value);
-    }
-  }, 100);
+const setSortNewest = () => { sortOrder.value = 'desc' }
+const setSortOldest = () => { sortOrder.value = 'asc' }
+const formatTime = date => Number.isFinite(Date.parse(date)) ? new Date(date).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) : ''
+const formatDate = date => {
+  if (!Number.isFinite(Date.parse(date))) return ''
+  const published = new Date(date)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  if (published.toDateString() === today.toDateString()) return 'Danas'
+  if (published.toDateString() === yesterday.toDateString()) return 'Jučer'
+  return published.toLocaleDateString('hr-HR', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
-
-// promjena kategorije
-watch(
-  () => feedsStore.selectedCategoryId,
-  async (newCategoryId) => {
-    console.log('Kategorija se promijenila na:', newCategoryId)
-    displayedNews.value = []
-    currentPage.value = 1
-    allNews.value = []
-    activeFeedId.value = null
-    expectedKey.value = computeExpectedKey(newCategoryId)
-
-    // cache-first: switch je trenutan i moguć i tijekom fetchanja
-    try {
-      const serviceCatId = newCategoryId === 'combo' ? 'all' : newCategoryId;
-      const fetchedNews = await newsService.fetchNews(serviceCatId);
-
-      // stale-check: korisnik je u međuvremenu switchao dalje — ne diraj noviji prikaz
-      if (feedsStore.selectedCategoryId !== newCategoryId) return;
-
-      if (fetchedNews && fetchedNews.length > 0) {
-        syncDisplayedNews(fetchedNews, true)
-      } else {
-        if (allNews.value.length === 0) {
-          displayedNews.value = [];
-        }
-      }
-    } catch (err) {
-      console.error('Error switching category:', err);
-    }
-  }
-)
-
-
-watch(
-  () => filteredNews.value.length,
-  () => {
-    setTimeout(() => {
-      setupIntersectionObserver();
-    }, 100);
-  }
-);
-
-// cachedNews je globalni — primijeni samo publikaciju ove kategorije
-watch(
-  () => newsService.cachedNews.value,
-  (latestNews) => {
-    if (!Array.isArray(latestNews) || latestNews.length === 0) return
-    if (!expectedKey.value || newsService.publishedCacheKey !== expectedKey.value) {
-      console.log('Ignoriram publikaciju druge kategorije (guard).');
-      return
-    }
-    syncDisplayedNews(latestNews, false)
-  }
-)
-
-// sortiranje: čisti klijentski re-rank, bez mreže
-watch(sortOrder, () => {
-  if (allNews.value.length > 0) {
-    syncDisplayedNews(allNews.value, true)
-  }
-})
-
-
-const setSortNewest = () => {
-  sortOrder.value = 'desc';
-};
-
-const setSortOldest = () => {
-  sortOrder.value = 'asc';
-};
+const getTimelineColorClass = date => {
+  if (!Number.isFinite(Date.parse(date))) return 'text-base-300'
+  const hours = (Date.now() - Date.parse(date)) / 3600000
+  if (hours < 2) return 'text-error'
+  if (hours < 6) return 'text-warning'
+  if (hours < 24) return 'text-primary'
+  return 'text-base-300'
+}
 
 onMounted(async () => {
-  await feedsStore.ensureReady()
-  // profil interesa za NewsCombo i srca
-  tasteStore.init().catch((e) => console.warn('tasteStore init:', e))
-
-  const categoryId = feedsStore.selectedCategoryId;
-  expectedKey.value = computeExpectedKey(categoryId);
-  const serviceCategoryId = categoryId === 'combo' ? 'all' : categoryId;
-  const fetchedNews = await newsService.fetchNews(serviceCategoryId, activeFeedId.value);
-
-  if (fetchedNews && fetchedNews.length > 0) {
-    syncDisplayedNews(fetchedNews, true)
-  } else if (newsService.cachedNews.value.length > 0) {
-    syncDisplayedNews(newsService.cachedNews.value, true)
-  }
-
-  setTimeout(() => {
-    setupIntersectionObserver()
-  }, 500)
+  try {
+    await feedsStore.ensureReady()
+    await tasteStore.init()
+  } catch {}
 })
-
 onUnmounted(() => {
-  if (observer.value) {
-    observer.value.disconnect()
-  }
+  observer?.disconnect()
+  cancelCategoryRequest(requestKey)
 })
 </script>
 
@@ -361,7 +162,7 @@ onUnmounted(() => {
                 :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'">
           Najstarije
         </button>
-        <button @click="refreshNews" class="btn btn-xs sm:btn-sm flex-none join-item btn-outline">
+        <button @click="refreshNews()" class="btn btn-xs sm:btn-sm flex-none join-item btn-outline">
           <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" fill="none"
                viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -373,7 +174,7 @@ onUnmounted(() => {
     </div>
 
     <!-- djelomično učitavanje: chip umjesto lažne greške -->
-    <div v-if="!loading && newsService.partialInfo.failed > 0 && displayedNews.length > 0"
+    <div v-if="!loading && partialInfo.failed > 0 && displayedNews.length > 0"
          class="flex justify-center mb-3 px-3 sm:px-0">
       <div class="badge badge-warning badge-outline gap-1.5 text-xs py-2.5">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -381,8 +182,12 @@ onUnmounted(() => {
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
         </svg>
-        Djelomično učitano — {{ newsService.partialInfo.total - newsService.partialInfo.failed }}/{{ newsService.partialInfo.total }} izvora
+        Djelomično učitano — {{ partialInfo.total - partialInfo.failed }}/{{ partialInfo.total }} izvora
       </div>
+    </div>
+
+    <div v-if="stale && displayedNews.length" class="alert alert-warning mb-4 text-sm">
+      Prikazane su ranije učitane vijesti. {{ error || 'Osvježavanje je u tijeku.' }}
     </div>
 
     <!-- skeleton kartice tijekom učitavanja -->
@@ -410,14 +215,14 @@ onUnmounted(() => {
         <span>{{ error }}</span>
       </div>
       <div class="flex gap-2 justify-center mt-4">
-        <button @click="refreshNews" class="btn btn-sm btn-primary">Pokušaj ponovno</button>
+        <button @click="refreshNews()" class="btn btn-sm btn-primary">Pokušaj ponovno</button>
         <button @click="loadDemoNews" class="btn btn-sm btn-secondary">Prikaži demo vijesti</button>
       </div>
     </div>
 
     <!-- vremenska crta -->
     <ul v-else-if="displayedNews.length > 0" class="timeline timeline-vertical timeline-compact max-w-full">
-      <li v-for="(news, index) in displayedNews" :key="news.link || index">
+      <li v-for="(news, index) in displayedNews" :key="news.guid || news.link || index">
         <hr v-if="index > 0" class="bg-base-300" />
 
         <!-- datum i vrijeme -->
@@ -451,12 +256,11 @@ onUnmounted(() => {
 
     <!-- učitaj više -->
     <div ref="loadMoreTrigger" v-if="hasMore && displayedNews.length > 0" class="flex justify-center py-8">
-      <span class="loading loading-spinner loading-md" v-if="loadingMore"></span>
-      <p v-else class="text-sm opacity-60">Scrollaj za više vijesti...</p>
+      <p class="text-sm opacity-60">Scrollaj za više vijesti...</p>
     </div>
 
     <!-- prazno -->
-    <div v-else-if="displayedNews.length === 0" class="text-center py-16">
+    <div v-else-if="!loading && !error && displayedNews.length === 0" class="text-center py-16">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 mx-auto mb-4 text-base-content opacity-20" fill="none"
         viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -464,7 +268,7 @@ onUnmounted(() => {
       </svg>
       <p class="text-xl opacity-60 mb-4">Nema dostupnih vijesti</p>
       <div class="flex gap-2 justify-center">
-        <button @click="refreshNews" class="btn btn-sm btn-primary">Osvježi</button>
+        <button @click="refreshNews()" class="btn btn-sm btn-primary">Osvježi</button>
         <button @click="loadDemoNews" class="btn btn-sm btn-secondary">Demo vijesti</button>
       </div>
     </div>

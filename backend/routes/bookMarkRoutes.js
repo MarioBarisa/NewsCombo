@@ -1,4 +1,5 @@
 import express from "express";
+import { articleUrl, sanitizeArticleHtml } from '../services/articleHtml.js';
 
 export default function createBookmarkRoutes(db) {
   const router = express.Router();
@@ -19,7 +20,7 @@ export default function createBookmarkRoutes(db) {
     try {
       const { title, body, originalUrl, source, publishedAt } = req.body;
 
-      if (!title || !originalUrl) {
+      if (typeof title !== 'string' || !articleUrl(originalUrl)) {
         return res.status(400).json({ error: "Nedostaju obavezni podaci (title, originalUrl)" });
       }
 
@@ -28,7 +29,7 @@ export default function createBookmarkRoutes(db) {
         return res.status(200).json({ poruka: "Članak je već spremljen." });
       }
 
-      const cleanBody = body ? body.replace(/<img[^>]*>/g, "") : "";
+      const cleanBody = sanitizeArticleHtml(body, originalUrl);
 
       const newBookmark = {
         title,

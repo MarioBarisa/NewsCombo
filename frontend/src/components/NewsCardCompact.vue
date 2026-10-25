@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { API_URL } from '../config.js';
+import { plainText } from '../Services/articleHtml.js';
 import { useTasteStore } from '../stores/tasteStore.js';
 
 const props = defineProps({
@@ -69,9 +70,7 @@ const imageUrl = computed(() => {
 
 const cleanDescription = computed(() => {
   if (!props.news.description) return 'Nema opisa dostupnog.'
-  const tmp = document.createElement('div')
-  tmp.innerHTML = props.news.description
-  const text = tmp.textContent || tmp.innerText || ''
+  const text = plainText(props.news.description)
   return text.substring(0, 150) + (text.length > 150 ? '...' : '')
 })
 

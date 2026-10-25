@@ -33,7 +33,7 @@
                 <span>•</span>
                 <span>{{ new Date(item.createdAt).toLocaleDateString() }}</span>
               </p>
-              <div class="prose max-w-none bg-base-200/50 p-4 rounded-lg text-sm sm:text-base" v-html="item.body"></div>
+              <div class="prose max-w-none bg-base-200/50 p-4 rounded-lg text-sm sm:text-base" v-html="sanitizeContent(item.body, item.originalUrl)"></div>
   
               <div class="card-actions justify-end mt-4">
                 <a :href="item.originalUrl" target="_blank" class="btn btn-outline btn-sm">Otvori original</a>
@@ -47,6 +47,7 @@
   
   <script setup>
   import { API_URL } from '../config.js';
+  import { sanitizeContent } from '../Services/articleHtml.js';
   import { ref, onMounted } from 'vue';
   
   const bookmarks = ref([]);
@@ -73,7 +74,7 @@
     const token = localStorage.getItem('token');
     
     try {
-      await fetch(`${API_URL}/bookmarks`, {
+      const response = await fetch(`${API_URL}/bookmarks`, {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',
@@ -81,6 +82,7 @@
         },
         body: JSON.stringify({ originalUrl: url })
       });
+      if (!response.ok) throw new Error('Brisanje nije uspjelo');
       bookmarks.value = bookmarks.value.filter(b => b.originalUrl !== url);
     } catch (e) {
       console.error("Greška brisanja:", e);

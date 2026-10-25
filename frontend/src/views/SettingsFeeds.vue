@@ -27,20 +27,8 @@ const customFeedCategory = ref('custom');
 const allFeedsByDomain = computed(() => feedsStore.feedsByCategory);
 
 onMounted(async () => {
-  if (feedsStore.categories.length <= 1) {
-    await feedsStore.initializeStore();
-  }
+  await feedsStore.ensureReady().catch(() => {});
 });
-
-const toggleFeedSelection = (feedId, isEditing = false) => {
-  const targetArray = isEditing ? editingCategoryFeeds : selectedFeedsForNew;
-  const index = targetArray.indexOf(feedId);
-  if (index > -1) {
-    targetArray.splice(index, 1);
-  } else {
-    targetArray.push(feedId);
-  }
-};
 
 const startAddingCategory = () => {
   showAddForm.value = true;
@@ -54,10 +42,12 @@ const cancelAddingCategory = () => {
   selectedFeedsForNew.value = [];
 };
 
-const confirmAddCategory = () => {
+const confirmAddCategory = async () => {
   if (newCategoryName.value.trim()) {
-    feedsStore.addCategory(newCategoryName.value, selectedFeedsForNew.value); // može biti []
-    cancelAddingCategory();
+    try {
+      await feedsStore.addCategory(newCategoryName.value, selectedFeedsForNew.value);
+      cancelAddingCategory();
+    } catch { alert('Spremanje kategorije nije uspjelo.'); }
   }
 };
 
@@ -75,16 +65,18 @@ const cancelEditingCategory = () => {
   editingCategoryFeeds.value = [];
 };
 
-const confirmEditCategory = () => {
+const confirmEditCategory = async () => {
   if (editingCategoryId.value && editingCategoryName.value.trim() && editingCategoryFeeds.value.length > 0) {
-    feedsStore.updateCategory(editingCategoryId.value, editingCategoryName.value, editingCategoryFeeds.value);
-    cancelEditingCategory();
+    try {
+      await feedsStore.updateCategory(editingCategoryId.value, editingCategoryName.value, editingCategoryFeeds.value);
+      cancelEditingCategory();
+    } catch { alert('Spremanje kategorije nije uspjelo.'); }
   }
 };
 
-const confirmDeleteCategory = (categoryId) => {
+const confirmDeleteCategory = async (categoryId) => {
   if (confirm('Jeste li sigurni da želite obrisati ovu kategoriju?')) {
-    feedsStore.deleteCategory(categoryId);
+    try { await feedsStore.deleteCategory(categoryId); } catch { alert('Brisanje kategorije nije uspjelo.'); }
   }
 };
 
@@ -162,9 +154,9 @@ const confirmAddCustomFeed = async () => {
 
 
 
-const confirmDeleteCustomFeed = (feedId) => {
+const confirmDeleteCustomFeed = async (feedId) => {
   if (confirm('Jeste li sigurni da želite obrisati ovaj custom feed?')) {
-    feedsStore.removeCustomFeed(feedId);
+    try { await feedsStore.removeCustomFeed(feedId); } catch { alert('Brisanje izvora nije uspjelo.'); }
   }
 };
 

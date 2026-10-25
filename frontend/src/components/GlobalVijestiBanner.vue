@@ -117,13 +117,14 @@
 
 <script>
 import {ref, onMounted, onUnmounted, computed, watch} from 'vue';
+import { plainText } from '../Services/articleHtml.js';
 import {useNewsGlobal} from '../Services/NewsGlobal.js';
 import NewsModal from './NewsModal.vue';
 
 export default {
   components: {NewsModal},
   setup() {
-    const newsService = useNewsGlobal();
+    const newsService = useNewsGlobal(() => 'all');
 
     const news = ref([]);
     const currentIndex = ref(0);
@@ -131,20 +132,13 @@ export default {
     const intervalId = ref(null);
     const scrollContainer = ref(null);
     const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
-    const retryCount = ref(0);
     const selectedNews = ref(null);
     const isNewsModalOpen = ref(false);
-    const maxRetries = 3;
 
     const loading = computed(() => newsService.isLoading.value);
     const error = computed(() => newsService.error.value);
     const loadingProgress = computed(() => newsService.loadingProgress.value || 0);
     const isBackgroundLoading = computed(() => loading.value && news.value.length > 0 && loadingProgress.value < 100);
-
-    const isAllCategoryNews = (items) => {
-      if (!Array.isArray(items) || items.length === 0) return false;
-      return items.every(item => (item.categoryId || 'all') === 'all');
-    };
 
     const applyNews = (incomingNews) => {
       if (!incomingNews || incomingNews.length === 0) return;
@@ -165,26 +159,9 @@ export default {
 
     const fetchNews = async () => {
       try {
-        retryCount.value++;
-        const fetchedNews = await newsService.fetchNews('all');
-
-        if (fetchedNews && fetchedNews.length > 0) {
-          applyNews(fetchedNews);
-          retryCount.value = 0;
-          startCarousel();
-        } else if (retryCount.value < maxRetries) {
-          setTimeout(() => fetchNews(), 2000 * retryCount.value);
-        } else {
-          loadMockNews();
-        }
-      } catch (err) {
-        console.error('Error fetching news:', err);
-        if (retryCount.value < maxRetries) {
-          setTimeout(() => fetchNews(), 2000 * retryCount.value);
-        } else {
-          loadMockNews();
-        }
-      }
+        const result = await newsService.fetchNews('all');
+        if (result.items.length) applyNews(result.items);
+      } catch {}
     };
 
     const loadMockNews = () => {
@@ -213,17 +190,10 @@ export default {
 
     const closeNewsModal = () => {
       isNewsModalOpen.value = false;
-      setTimeout(() => {
-        selectedNews.value = null;
-      }, 200);
+      selectedNews.value = null;
     };
 
-    const stripHtml = (html) => {
-      if (!html) return '';
-      const tmp = document.createElement('div');
-      tmp.innerHTML = html;
-      return tmp.textContent || tmp.innerText || '';
-    };
+    const stripHtml = plainText;
 
     const formatDate = (dateString) => {
       if (!dateString) return '';
@@ -295,8 +265,12 @@ export default {
     watch(
         () => newsService.cachedNews.value,
         (latestNews) => {
-          if (isAllCategoryNews(latestNews)) {
-            applyNews(latestNews);
+          if (latestNews.length) applyNews(latestNews);
+          else {
+            news.value = [];
+            currentNews.value = null;
+            currentIndex.value = 0;
+            if (intervalId.value) clearInterval(intervalId.value);
           }
         }
     );

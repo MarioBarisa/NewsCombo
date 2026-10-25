@@ -1,5 +1,5 @@
 import express from "express";
-import cron from 'node-cron';
+import { rssService } from '../services/rssService.js';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -7,14 +7,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 export default function createAIRoutes(db) {
   const router = express.Router();
   
-  let dailySummaryCount = 0;
-  let lastResetDate = new Date().toDateString();
-  
-  cron.schedule('0 0 * * *', () => {
-    dailySummaryCount = 0;
-    lastResetDate = new Date().toDateString();
-  });
-
   router.get("/ai-grupa", async (req, res) => {
     try {
       const collection = db.collection("ai_grupa");
@@ -136,10 +128,6 @@ export default function createAIRoutes(db) {
         );
         aiGrupa.generatedToday = 0;
         aiGrupa.lastResetDate = currentDate;
-        dailySummaryCount = 0;
-        lastResetDate = currentDate;
-      } else {
-        dailySummaryCount = aiGrupa.generatedToday || 0;
       }
 
       res.status(200).json({
@@ -178,10 +166,6 @@ export default function createAIRoutes(db) {
           }
         );
         aiGrupa.generatedToday = 0;
-        dailySummaryCount = 0;
-        lastResetDate = currentDate;
-      } else {
-        dailySummaryCount = aiGrupa.generatedToday || 0;
       }
   
       if ((aiGrupa.generatedToday || 0) >= 3) {
@@ -204,16 +188,14 @@ export default function createAIRoutes(db) {
         return res.status(400).json({ error: "Feedovi nisu pronađeni" });
       }
   
-      const Parser = (await import('rss-parser')).default;
-      const parser = new Parser();
       let allArticles = [];
       
       for (const feed of feeds) {
         try {
-          const rssFeed = await parser.parseURL(feed.url);
+          const rssFeed = await rssService.getFeed(feed.url);
           const articles = rssFeed.items.slice(0, 5).map(item => ({
             title: item.title || "Bez naslova",
-            description: (item.contentSnippet || item.description || "").substring(0, 300),
+            description: (item.description || "").substring(0, 300),
             link: item.link,
             pubDate: item.pubDate,
             source: feed.naziv
@@ -243,22 +225,18 @@ export default function createAIRoutes(db) {
   
       await summaryCollection.insertOne(summaryDoc);
   
-      await aiGrupaCollection.updateOne(
+      const updatedGroup = await aiGrupaCollection.findOneAndUpdate(
         { type: "ai_spotlight", userId: req.user.userId },
-        { 
-          $inc: { generatedToday: 1 },
-          $set: { updatedAt: new Date() }
-        }
+        { $inc: { generatedToday: 1 }, $set: { updatedAt: new Date() } },
+        { returnDocument: 'after' }
       );
-  
-      dailySummaryCount++;
-  
+
       res.status(200).json({
         poruka: "AI sažetak generiran",
         summary: aiSummary,
         articlesProcessed: allArticles.length,
         generatedAt: summaryDoc.generatedAt,
-        remainingGenerations: 3 - dailySummaryCount
+        remainingGenerations: Math.max(0, 3 - updatedGroup.generatedToday)
       });
   
     } catch (error) {

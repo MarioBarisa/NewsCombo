@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useFeedsStore } from '../stores/feedStore';
 
 const feedsStore = useFeedsStore();
@@ -11,22 +11,9 @@ const categoryFeeds = computed(() => {
   return feedsStore.selectedFeeds;
 });
 
-const activeFeed = computed(() => {
-  if (!activeFeedId.value) return null;
-  return categoryFeeds.value.find(f => f.id === activeFeedId.value);
-});
-
-// broj vijesti po feedu (za buduće statistike)
-const feedCounts = ref({});
-
 const selectFeed = (feedId) => {
-activeFeedId.value = activeFeedId.value === feedId ? null : feedId;
-emit('feed-changed', activeFeedId.value);
-};
-
-const selectAllFeeds = () => {
-  activeFeedId.value = null;
-  emit('feed-changed', null);
+  activeFeedId.value = activeFeedId.value === feedId ? null : feedId;
+  emit('feed-changed', activeFeedId.value);
 };
 
 // reset pri promjeni kategorije
@@ -57,9 +44,6 @@ const onFaviconError = (event) => {
   event.target.style.display = 'none';
 };
 
-onMounted(() => {
-  feedsStore.loadFromLocalStorage();
-});
 </script>
 
 <template>

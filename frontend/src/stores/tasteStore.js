@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { API_URL } from '../config.js';
+import { userStorageKey } from '../Services/sessionStorage.js';
 // Algoritam: čiste funkcije u Services/recommender.js
 import {
   createEmptyProfile,
@@ -16,8 +17,6 @@ import {
 // tasteStore — profil interesa: localStorage ogledalo + debounced sync na /api/profile
 
 const LOCAL_KEY = 'newsCombo_taste_profile';
-const MIGRATED_KEY = 'newsCombo_taste_migrated_v1';
-const LEGACY_PREFS_KEY = 'newsPreferences';
 const SYNC_DEBOUNCE_MS = 12_000;
 // ruta je montirana s /api prefiksom na backendu
 const PROFILE_API = `${API_URL}/api/profile`;
@@ -51,31 +50,6 @@ const normalizeServerDoc = (doc) => {
   };
 };
 
-// migracija starog newsPreferences -> hb (srca vidljiva cross-device)
-const migrateLegacyPrefs = () => {
-  try {
-    if (localStorage.getItem(MIGRATED_KEY)) return null;
-    const raw = localStorage.getItem(LEGACY_PREFS_KEY);
-    if (!raw) return null;
-    const prefs = JSON.parse(raw);
-    const profile = createEmptyProfile();
-    for (const [link, val] of Object.entries(prefs)) {
-      const key = hashLink(link);
-      if (val === 'like') {
-        if (!profile.hb.includes(key)) profile.hb.push(key);
-        profile.st.likes += 1;
-      } else if (val === 'dislike') {
-        profile.st.dislikes += 1;
-      }
-    }
-    localStorage.setItem(MIGRATED_KEY, String(Date.now()));
-    localStorage.removeItem(LEGACY_PREFS_KEY);
-    return profile.st.likes || profile.st.dislikes ? profile : null;
-  } catch {
-    return null;
-  }
-};
-
 export const useTasteStore = defineStore('taste', () => {
   const profile = ref(createEmptyProfile());
   const hydrated = ref(false);
@@ -87,6 +61,8 @@ export const useTasteStore = defineStore('taste', () => {
 
   let syncTimer = null;
   let listenersBound = false;
+  let generation = 0;
+  let controller = new AbortController();
 
   // ---------- Getteri ----------
   const likedSet = computed(() => new Set(profile.value.hb));
@@ -101,7 +77,7 @@ export const useTasteStore = defineStore('taste', () => {
   // ---------- Lokalno spremište ----------
   const persistLocal = () => {
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(profile.value));
+      localStorage.setItem(userStorageKey(LOCAL_KEY), JSON.stringify(profile.value));
     } catch (e) {
       console.warn('tasteStore: ne mogu spremiti lokalni profil:', e);
     }
@@ -123,30 +99,32 @@ export const useTasteStore = defineStore('taste', () => {
     if (!localStorage.getItem('token')) return;
     if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
     syncState.value = 'saving';
+    const current = generation;
     try {
       const response = await fetch(`${PROFILE_API}`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ profile: JSON.parse(JSON.stringify(profile.value)) }),
         keepalive: true,
+        signal: controller.signal,
       });
-      syncState.value = response.ok ? 'saved' : 'error';
+      if (current === generation) syncState.value = response.ok ? 'saved' : 'error';
     } catch {
-      syncState.value = 'error'; // ponovni signal okida novi sync
+      if (current === generation) syncState.value = 'error'; // ponovni signal okida novi sync
     }
   }
 
   // flush pri napuštanju stranice
   const flushSync = () => {
-    if (syncState.value !== 'dirty') return;
+    if (syncState.value !== 'dirty' || !localStorage.getItem('token')) return;
     try {
       fetch(`${PROFILE_API}`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ profile: JSON.parse(JSON.stringify(profile.value)) }),
         keepalive: true,
-      });
-      syncState.value = 'saved';
+        signal: controller.signal,
+      }).catch(() => {});
     } catch { /* pusti */ }
   };
 
@@ -163,28 +141,23 @@ export const useTasteStore = defineStore('taste', () => {
   let initPromise = null;
 
   async function doInit() {
+    const current = generation;
     bindLifecycleListeners();
 
     // 1) Lokalna kopija (instant UI)
     let local = null;
     try {
-      const raw = localStorage.getItem(LOCAL_KEY);
+      const raw = localStorage.getItem(userStorageKey(LOCAL_KEY));
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') local = normalizeServerDoc(parsed);
       }
     } catch { /* pokvaren cache -> ignoriraj */ }
 
-    const migrated = migrateLegacyPrefs();
-    if (!local && migrated) {
-      local = migrated;
-      persistLocal();
-    }
-
     // 2) Server (cross-device) — LWW merge po updatedAt
     if (localStorage.getItem('token')) {
       try {
-        const response = await fetch(`${PROFILE_API}`, { headers: authHeaders() });
+        const response = await fetch(`${PROFILE_API}`, { headers: authHeaders(), signal: controller.signal });
         if (response.ok) {
           const data = await response.json();
           const server = normalizeServerDoc(data?.profile);
@@ -197,6 +170,7 @@ export const useTasteStore = defineStore('taste', () => {
       }
     }
 
+    if (current !== generation) return;
     profile.value = decayProfile(local || createEmptyProfile());
     persistLocal();
     hydrated.value = true;
@@ -204,10 +178,11 @@ export const useTasteStore = defineStore('taste', () => {
 
   // jednom po sesiji; na grešku dopušta retry
   function init() {
+    const current = generation;
     if (!initPromise) {
       initPromise = doInit().catch((e) => {
         console.warn('tasteStore init:', e);
-        initPromise = null;
+        if (current === generation) initPromise = null;
       });
     }
     return initPromise;
@@ -261,11 +236,28 @@ export const useTasteStore = defineStore('taste', () => {
   const isLiked = (link) => likedSet.value.has(hashLink(link));
   const isDisliked = (link) => dislikedRuntime.value.has(hashLink(link));
 
-  // ---------- Reset (stranica "Moji interesi" / privatnost) ----------
+  const resetSession = () => {
+    generation++;
+    controller.abort();
+    controller = new AbortController();
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = null;
+    initPromise = null;
+    profile.value = createEmptyProfile();
+    hydrated.value = false;
+    syncState.value = 'idle';
+    dislikedRuntime.value = new Set();
+    openedRuntime.value = new Set();
+  };
+
+  // Reset profila na korisnikov zahtjev.
   async function resetProfile() {
-    try {
-      await fetch(`${PROFILE_API}`, { method: 'DELETE', headers: authHeaders() });
-    } catch { /* lokalno čišćenje ionako radimo */ }
+    const current = generation;
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = null;
+    const response = await fetch(`${PROFILE_API}`, { method: 'DELETE', headers: authHeaders(), signal: controller.signal });
+    if (!response.ok) throw new Error('Brisanje profila nije uspjelo');
+    if (current !== generation) return;
     profile.value = createEmptyProfile();
     dislikedRuntime.value = new Set();
     openedRuntime.value = new Set();
@@ -294,5 +286,6 @@ export const useTasteStore = defineStore('taste', () => {
     isDisliked,
     sortedEntries,
     resetProfile,
+    resetSession,
   };
 });

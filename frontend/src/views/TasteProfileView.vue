@@ -57,11 +57,16 @@ const catLabel = (key) => CATEGORY_LABELS[key] || key;
 
 async function handleReset() {
   isDeleting.value = true;
-  await taste.resetProfile();
-  isDeleting.value = false;
-  showDeleteModal.value = false;
-  deleteDone.value = true;
-  setTimeout(() => (deleteDone.value = false), 4000);
+  try {
+    await taste.resetProfile();
+    showDeleteModal.value = false;
+    deleteDone.value = true;
+    setTimeout(() => (deleteDone.value = false), 4000);
+  } catch {
+    alert('Brisanje profila nije uspjelo. Pokušajte ponovno.');
+  } finally {
+    isDeleting.value = false;
+  }
 }
 
 function goToCombo() {

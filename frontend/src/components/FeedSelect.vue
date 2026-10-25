@@ -50,9 +50,7 @@ const selectCategory = (categoryId) => {
 
 onMounted(async () => {
   checkMobile();
-  if (feedsStore.categories.length <= 1) {
-    await feedsStore.initializeStore();
-  }
+  await feedsStore.ensureReady().catch(() => {});
   window.addEventListener('resize', checkMobile);
 });
 

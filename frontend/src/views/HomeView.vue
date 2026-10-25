@@ -44,7 +44,9 @@ const handleTouchEnd = async () => {
     const categoryId = feedsStore.selectedCategoryId;
     // combo dohvaća sve feedove
     const serviceCatId = categoryId === 'combo' ? 'all' : categoryId;
-    await newsService.refreshNews(serviceCatId);
+    if (categoryId !== 'ai-summary') {
+      try { await newsService.refreshNews(serviceCatId); } catch {}
+    }
   }
   isPulling.value = false;
   pullDistance.value = 0;
@@ -64,7 +66,7 @@ const isAISummarySelected = computed(() => {
 
 //inicjallizacija novih korisnika
 onMounted(async () => {
-  await feedsStore.ensureReady();
+  await feedsStore.ensureReady().catch(() => {});
   // setup modal samo ako feedovi stvarno ne postoje
   if (!feedsStore.isLoading && feedsStore.needsInitialSetup) {
     showSetupModal.value = true;

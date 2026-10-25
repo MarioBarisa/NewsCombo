@@ -179,6 +179,9 @@ export default function createAuthRoutes(db) {
         await db.collection('ai_summaries').deleteMany({ userId: userId });  //brisanje generiranih ai sažetaka korisnika
         await db.collection('ai_grupa').deleteMany({ userId: userId }); //brisanje ai grupe korisnika
 
+        await db.collection('taste_profiles').deleteMany({ userId });
+        await db.collection('id_counters').deleteMany({ _id: { $in: [`rss_feedovi:${userId}`, `grupe:${userId}`] } });
+
         // brisanje samog korisnika
         const result = await users.deleteOne({ email: userEmail });
   
