@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPinia, setActivePinia } from 'pinia';
-import { useThemeStore } from '@/stores/theme.js';
+import { useThemeStore } from '../src/stores/theme.js';
 const storage = new Map();
 globalThis.localStorage = { getItem(key) { return storage.get(key) ?? null; }, setItem(key, value) { storage.set(key, value); } };
 setActivePinia(createPinia());
