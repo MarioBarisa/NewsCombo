@@ -40,6 +40,20 @@
       </div>
     </div>
 
+    <div class="card bg-base-200 shadow-xl mb-6">
+      <div class="card-body">
+        <label class="flex items-center justify-between gap-4 cursor-pointer">
+          <span>
+            <span class="card-title">Animacije vijesti</span>
+            <span class="block text-sm opacity-70 mt-2">Animiraj promjene redoslijeda i prijelaze istaknutih vijesti.</span>
+          </span>
+          <input type="checkbox" class="toggle toggle-primary shrink-0"
+            :checked="themeStore.timelineAnimations"
+            @change="themeStore.setTimelineAnimations($event.target.checked)" />
+        </label>
+      </div>
+    </div>
+
     <div class="card bg-base-200 shadow-xl">
       <div class="card-body">
         <h2 class="card-title mb-4">

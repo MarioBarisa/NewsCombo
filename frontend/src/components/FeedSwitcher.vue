@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { computed } from 'vue';
 import { useFeedsStore } from '../stores/feedStore';
 
 const feedsStore = useFeedsStore();
 
-const activeFeedId = ref(null);
+const props = defineProps({
+  activeFeedId: { type: [String, Number], default: null }
+});
 
 // feedovi trenutne kategorije
 const categoryFeeds = computed(() => {
@@ -12,16 +14,20 @@ const categoryFeeds = computed(() => {
 });
 
 const selectFeed = (feedId) => {
-  activeFeedId.value = activeFeedId.value === feedId ? null : feedId;
-  emit('feed-changed', activeFeedId.value);
+  emit('feed-changed', props.activeFeedId === feedId ? null : feedId);
 };
 
-// reset pri promjeni kategorije
-watch(() => feedsStore.selectedCategoryId, () => {
-  activeFeedId.value = null;
-});
-
 const emit = defineEmits(['feed-changed']);
+
+const handleSelect = (event) => {
+  for (const feed of categoryFeeds.value) {
+    if (String(feed.id) === event.target.value) {
+      emit('feed-changed', feed.id);
+      return;
+    }
+  }
+  emit('feed-changed', null);
+};
 
 const getFeedDomain = (feed) => {
   const rawDomain = feed?.domain || feed?.url || '';
@@ -55,7 +61,8 @@ const onFaviconError = (event) => {
           v-for="feed in categoryFeeds"
           :key="feed.id"
           @click="selectFeed(feed.id)"
-          :class="activeFeedId === feed.id ? 'btn-secondary' : 'btn-ghost'"
+          :class="props.activeFeedId === feed.id ? 'btn-secondary' : 'btn-ghost'"
+          :aria-pressed="props.activeFeedId === feed.id"
           class="btn btn-sm justify-start normal-case h-auto min-h-0 py-2 px-3"
           :title="`Prikaži samo vijesti iz ${feed.name}`"
         >
@@ -79,11 +86,11 @@ const onFaviconError = (event) => {
     <div class="md:hidden mb-4">
       <div class="form-control">
         <select
-          v-model="activeFeedId"
-          @change="emit('feed-changed', activeFeedId)"
+          :value="props.activeFeedId ?? ''" aria-label="Odaberi izvor vijesti"
+          @change="handleSelect"
           class="select select-bordered select-sm w-full font-semibold"
         >
-          <option :value="null">Svi izvori ({{ categoryFeeds.length }})</option>
+          <option value="">Svi izvori ({{ categoryFeeds.length }})</option>
           <option
             v-for="feed in categoryFeeds"
             :key="feed.id"
@@ -101,7 +108,7 @@ const onFaviconError = (event) => {
 <style scoped>
 .feed-switcher {
   padding: 0.5rem;
-  background: var(--fallback-b2, oklch(var(--b2) / 1));
+  background: var(--color-base-200);
   border-radius: 0.5rem;
 }
 
@@ -114,18 +121,9 @@ const onFaviconError = (event) => {
   padding-right: 0.25rem;
 }
 
-.divider-horizontal {
-  width: 1px;
-  height: 1.5rem;
-}
-
 @media (max-width: 375px) {
   .feed-switcher {
     padding: 0.25rem;
-  }
-  .alert {
-    padding: 0.5rem;
-    font-size: 0.875rem;
   }
 }
 </style>

@@ -9,6 +9,8 @@ import TasteProfileView from '../views/TasteProfileView.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const routes = [
+  { path: '/tos', name: 'TermsOfService', component: () => import('../views/TermsOfService.vue') },
+  { path: '/privacy', name: 'PrivacyPolicy', component: () => import('../views/PrivacyPolicy.vue') },
   { path: '/landing', name: 'Landing', component: LandingView, meta: { guest: true } },
   { path: '/', name: 'Home', component: HomeView, meta: { auth: true } },
   { path: '/profile', name: 'Profile', component: ProfileView, meta: { auth: true } },
@@ -21,6 +23,9 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    return savedPosition || { top: 0 };
+  },
 })
 
 router.beforeEach((to) => {

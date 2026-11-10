@@ -9,6 +9,12 @@ export const useThemeStore = defineStore('theme', () => {
   const MAX_FONT_SCALE = 1.4
 
   const fontScale = ref(DEFAULT_FONT_SCALE)
+  const timelineAnimations = ref(localStorage.getItem('newscombo-timeline-animations') !== 'false')
+
+  const setTimelineAnimations = (enabled) => {
+    timelineAnimations.value = enabled
+    localStorage.setItem('newscombo-timeline-animations', String(enabled))
+  }
 
   const clampScale = (v) => {
     const n = Number(v)
@@ -95,6 +101,8 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   return {
+    timelineAnimations,
+    setTimelineAnimations,
     availableThemes,
     currentTheme,
     setTheme,

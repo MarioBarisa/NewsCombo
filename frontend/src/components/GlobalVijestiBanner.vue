@@ -1,5 +1,5 @@
 <template>
-  <div class="news-carousel bg-base-200 rounded-box p-3 sm:p-4">
+  <div class="bg-base-200 rounded-box p-3 sm:p-4">
     <h2 class="text-lg font-semibold mb-3">Najbitnije vijesti</h2>
 
     <div v-if="loading && news.length === 0" class="flex justify-center py-8">
@@ -11,7 +11,7 @@
       <!-- idi lijevo -->
       <button
           v-if="news.length > 1"
-          @click="goToPrevious"
+          @click="goToPrevious" aria-label="Prethodna vijest"
           class="hidden sm:flex absolute left-0 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-neutral shadow-xl hover:scale-105 transition-transform"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -22,7 +22,7 @@
       <!-- idi desno -->
       <button
           v-if="news.length > 1"
-          @click="goToNext"
+          @click="goToNext" aria-label="Sljedeća vijest"
           class="hidden sm:flex absolute right-0 top-1/2 transform -translate-y-1/2 z-10 btn btn-circle btn-sm btn-neutral shadow-xl hover:scale-105 transition-transform"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -32,14 +32,16 @@
 
       <!-- Sadržaj -->
       <div
-          class="flex sm:block overflow-x-auto sm:overflow-x-visible snap-x sm:snap-none hide-scrollbar touch-pan-x gap-4 pb-2 sm:pb-0"
+          class="carousel sm:grid w-full overflow-x-auto sm:overflow-x-hidden snap-x sm:snap-none touch-pan-x gap-4 sm:gap-0 pb-2 sm:pb-0"
           @scroll.passive="onMobileScroll" ref="scrollContainer"
           style="overscroll-behavior-x: contain;"
       >
-        <template v-for="(item, index) in news" :key="index">
+        <template v-for="(item, index) in news" :key="item.guid || `${item.feedId}:${item.link}`">
           <div
-              v-show="isMobile || index === currentIndex"
-              class="flex-shrink-0 w-[85vw] sm:w-full snap-center cursor-pointer hover:bg-base-300 rounded-box p-3 sm:py-4 sm:px-12 transition-colors duration-300 mx-0"
+              class="carousel-item block! shrink-0 w-[85%] sm:w-full sm:col-start-1 sm:row-start-1 snap-center cursor-pointer hover:bg-base-300 rounded-box p-3 sm:py-4 sm:px-12 mx-0"
+              :class="[!isMobile && index !== currentIndex ? 'opacity-0 pointer-events-none' : 'opacity-100', themeStore.timelineAnimations ? 'motion-safe:transition-opacity motion-safe:duration-200 motion-safe:ease-out' : 'transition-none']"
+              :inert="!isMobile && index !== currentIndex" :aria-hidden="!isMobile && index !== currentIndex"
+              role="button" tabindex="0" @keydown.enter="openNewsDetail(item)" @keydown.space.prevent="openNewsDetail(item)"
               @click="openNewsDetail(item)"
           >
             <div class="flex flex-row gap-3 sm:gap-4 items-center text-left">
@@ -69,12 +71,12 @@
 
       <!-- indikacijski krugovi za galeriju -->
       <div class="flex justify-center mt-2 gap-2" v-if="news.length > 1">
-        <div
-            v-for="(_, index) in news"
-            :key="index"
+        <button type="button" :aria-label="`Prikaži vijest ${index + 1}`" :aria-pressed="index === currentIndex"
+            v-for="(item, index) in news"
+            :key="item.guid || `${item.feedId}:${item.link}`"
             :class="['w-2 h-2 rounded-full transition-all duration-300 cursor-pointer', index === currentIndex ? 'bg-primary' : 'bg-base-content opacity-30']"
             @click="goToSlide(index)"
-        ></div>
+        ></button>
       </div>
     </div>
 
@@ -120,10 +122,12 @@ import {ref, onMounted, onUnmounted, computed, watch} from 'vue';
 import { plainText } from '../Services/articleHtml.js';
 import {useNewsGlobal} from '../Services/NewsGlobal.js';
 import NewsModal from './NewsModal.vue';
+import { useThemeStore } from '../stores/theme';
 
 export default {
   components: {NewsModal},
   setup() {
+    const themeStore = useThemeStore();
     const newsService = useNewsGlobal(() => 'all');
 
     const news = ref([]);
@@ -204,7 +208,7 @@ export default {
           hour: '2-digit',
           minute: '2-digit'
         });
-      } catch (e) {
+      } catch {
         return '';
       }
     };
@@ -215,8 +219,11 @@ export default {
       startCarousel();
       if (isMobile.value && scrollContainer.value) {
         const container = scrollContainer.value;
-        const itemWidth = container.querySelector('.flex-shrink-0')?.offsetWidth || container.clientWidth;
-        container.scrollTo({ left: itemWidth * index, behavior: 'smooth' });
+        const item = container.children[index];
+        if (!item) return;
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const left = item.offsetLeft - container.children[0].offsetLeft;
+        container.scrollTo({ left, behavior: themeStore.timelineAnimations && !reducedMotion ? 'smooth' : 'instant' });
       }
     };
 
@@ -237,11 +244,19 @@ export default {
     const onMobileScroll = () => {
       if (!isMobile.value || !scrollContainer.value) return;
       const container = scrollContainer.value;
-      const scrollPosition = container.scrollLeft;
-      const itemWidth = container.clientWidth;
-      const newIndex = Math.round(scrollPosition / itemWidth);
+      let newIndex = 0;
+      let nearestDistance = Infinity;
+      const firstOffset = container.children[0]?.offsetLeft || 0;
+      for (let index = 0; index < container.children.length; index++) {
+        const distance = Math.abs(container.children[index].offsetLeft - firstOffset - container.scrollLeft);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          newIndex = index;
+        }
+      }
       if (newIndex !== currentIndex.value && newIndex >= 0 && newIndex < news.value.length) {
         currentIndex.value = newIndex;
+        currentNews.value = news.value[newIndex];
       }
     };
 
@@ -283,6 +298,7 @@ export default {
     });
 
     return {
+      themeStore,
       loading,
       error,
       currentNews,
@@ -311,15 +327,6 @@ export default {
 </script>
 
 <style scoped>
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -328,8 +335,5 @@ export default {
   overflow: hidden;
 }
 
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
 </style>
 

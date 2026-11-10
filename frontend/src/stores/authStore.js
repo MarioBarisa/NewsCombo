@@ -45,12 +45,12 @@ export const useAuthStore = defineStore('auth', {
       this.setSession(data);
     },
 
-    async register(email, password, name) {
+    async register(email, password, name, acceptedLegal) {
       const generation = ++this.requestGeneration;
       const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name })
+        body: JSON.stringify({ email, password, name, acceptedTerms: acceptedLegal, acceptedPrivacy: acceptedLegal })
       });
       const data = await res.json();
       if (generation !== this.requestGeneration) throw new Error('Prijava je prekinuta');

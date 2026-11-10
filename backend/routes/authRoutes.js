@@ -11,12 +11,20 @@ export default function createAuthRoutes(db) {
   // Register
   router.post('/auth/register', async (req, res) => {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name, acceptedTerms, acceptedPrivacy } = req.body;
+      if (acceptedTerms !== true || acceptedPrivacy !== true) {
+        return res.status(400).json({ error: 'Prihvati Uvjete korištenja i Pravila privatnosti.' });
+      }
       const existing = await users.findOne({ email });
       if (existing) return res.status(400).json({ error: 'Email već postoji' });
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = { email, password: hashedPassword, name, createdAt: new Date() };
+      const user = {
+        email, password: hashedPassword, name, createdAt: new Date(),
+        legalAcceptance: {
+          termsVersion: '2026-11-10', privacyVersion: '2026-11-10', acceptedAt: new Date()
+        }
+      };
       await users.insertOne(user);
 
       const token = jwt.sign({ userId: user._id, email }, JWT_SECRET, { expiresIn: '30d' });

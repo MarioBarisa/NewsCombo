@@ -1,6 +1,7 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import { onMounted } from 'vue'
+import AppFooter from './components/AppFooter.vue'
 import NavBar from './components/NavBar.vue'
 import { useThemeStore } from './stores/theme'
 import { useFeedsStore } from './stores/feedStore'
@@ -21,6 +22,9 @@ onMounted(async() => {
 </script>
 
 <template>
+  <div class="min-h-screen flex flex-col">
   <NavBar v-if="authStore.isAuthenticated"></NavBar>
-  <RouterView></RouterView>
+  <div class="flex-1 min-w-0"><RouterView /></div>
+  <AppFooter />
+  </div>
 </template>

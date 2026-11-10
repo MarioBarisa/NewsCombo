@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { createPinia, setActivePinia } from 'pinia';
+import { useThemeStore } from '@/stores/theme.js';
+const storage = new Map();
+globalThis.localStorage = { getItem(key) { return storage.get(key) ?? null; }, setItem(key, value) { storage.set(key, value); } };
+setActivePinia(createPinia());
+let theme = useThemeStore();
+assert.equal(theme.timelineAnimations, true);
+theme.setTimelineAnimations(false);
+assert.equal(storage.get('newscombo-timeline-animations'), 'false');
+setActivePinia(createPinia());
+theme = useThemeStore();
+assert.equal(theme.timelineAnimations, false);
+theme.setTimelineAnimations(true);
+assert.equal(storage.get('newscombo-timeline-animations'), 'true');
+console.log('PASS: postavka animacija pamti uključivanje i isključivanje između pokretanja.');

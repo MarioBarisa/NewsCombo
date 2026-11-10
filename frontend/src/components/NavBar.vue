@@ -1,7 +1,7 @@
 <template>
-  <div class="navbar bg-base-100 shadow-lg sticky top-0 z-50">
+  <div class="navbar shadow-lg sticky top-0 z-50">
     <div class="flex-1">
-      <router-link to="/" class="btn btn-ghost text-xl">
+      <router-link to="/" class="link inline-flex items-center min-h-10 rounded-field px-2 py-1 sm:px-4 sm:py-2 text-xl font-semibold no-underline active:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24"
           stroke="#f7441f">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -12,7 +12,7 @@
     </div>
     <!-- ime + avatar u horizontalnom redu -->
     <div class="flex items-center ml-auto">
-      <span v-if="displayName" class="hidden md:block text-sm font-semibold mr-2 opacity-80 select-none max-w-[10rem] truncate">
+      <span v-if="displayName" class="hidden md:block text-sm font-semibold mr-2 opacity-80 select-none max-w-40 truncate">
         {{ displayName }}
       </span>
       <div :class="['dropdown dropdown-end', { 'dropdown-open': isDropdownOpen }]" ref="dropdownContainer">
@@ -33,7 +33,7 @@
       </div>
       <ul
         tabindex="-1"
-        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow"
+        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
         ref="dropdownMenu"
       >
         <li>

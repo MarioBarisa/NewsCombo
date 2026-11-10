@@ -1,0 +1,8 @@
+/AGENTS.MD
+.agents/skills/daisyui/
+.DS_Store
+.env
+.env.*
+!.env.example
+**/test-results/
+**/playwright-report/

@@ -1,12 +1,14 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, TransitionGroup } from 'vue'
 import { useNewsGlobal, cacheKeyFor, cancelCategoryRequest } from '../Services/NewsGlobal'
 import { useFeedsStore } from '../stores/feedStore'
+import { useThemeStore } from '../stores/theme'
 import { useTasteStore } from '../stores/tasteStore'
 import NewsCardCompact from './NewsCardCompact.vue'
 import NewsModal from './NewsModal.vue'
 import FeedSwitcher from './FeedSwitcher.vue'
 
+const themeStore = useThemeStore()
 const newsService = useNewsGlobal()
 const feedsStore = useFeedsStore()
 const tasteStore = useTasteStore()
@@ -14,6 +16,11 @@ const itemsPerPage = 15
 const visibleCount = ref(itemsPerPage)
 const sortOrder = ref('desc')
 const loadMoreTrigger = ref(null)
+const timelineElement = ref(null)
+let sortAnimations = []
+const isChangingSort = ref(false)
+let sortAnimationGeneration = 0
+let pendingEntrance = false
 let observer = null
 let requestKey = null
 const selectedNews = ref(null)
@@ -26,6 +33,7 @@ const partialInfo = newsService.partialInfo
 const stale = computed(() => newsService.snapshot.value.stale)
 const allNews = computed(() => demoNews.value || newsService.cachedNews.value)
 const isComboMode = computed(() => feedsStore.selectedCategoryId === 'combo')
+const isPersonalized = computed(() => isComboMode.value || sortOrder.value === 'personal')
 const expectedKey = computed(() => cacheKeyFor(feedsStore.selectedCategoryId, feedsStore.selectedFeeds))
 const filteredNews = computed(() => {
   if (!activeFeedId.value) return allNews.value
@@ -36,11 +44,16 @@ const sortedNews = computed(() => {
   sorted.sort((a, b) => {
     const aTime = Date.parse(a.pubDate) || 0
     const bTime = Date.parse(b.pubDate) || 0
-    return sortOrder.value === 'desc' ? bTime - aTime : aTime - bTime
+    return sortOrder.value !== 'asc' ? bTime - aTime : aTime - bTime
   })
   return sorted
 })
-const rankedNews = computed(() => isComboMode.value ? tasteStore.rankArticles(sortedNews.value) : sortedNews.value)
+const rankedNews = computed(() => {
+  if (!isPersonalized.value) return sortedNews.value
+  const articles = []
+  for (const article of sortedNews.value) articles.push({ ...article })
+  return tasteStore.rankArticles(articles)
+})
 const displayedNews = computed(() => rankedNews.value.slice(0, visibleCount.value))
 const hasMore = computed(() => displayedNews.value.length < rankedNews.value.length)
 
@@ -70,19 +83,36 @@ const closeModal = () => {
   selectedNews.value = null
 }
 const handleFeedChange = feedId => {
+  sortAnimationGeneration++
+  cancelSortAnimations()
+  pendingEntrance = true
+  isChangingSort.value = true
+  closeModal()
   activeFeedId.value = feedId
   visibleCount.value = itemsPerPage
 }
 
-watch([expectedKey, () => feedsStore.initialized, () => feedsStore.selectedCategoryId], async () => {
-  if (requestKey && requestKey !== expectedKey.value) cancelCategoryRequest(requestKey)
-  requestKey = expectedKey.value
+watch([expectedKey, () => feedsStore.initialized, () => feedsStore.selectedCategoryId], async (
+  [key, initialized, categoryId], previous
+) => {
+  const previousCategoryId = previous?.[2]
+  sortAnimationGeneration++
+  cancelSortAnimations()
+  pendingEntrance = true
+  isChangingSort.value = true
+  if (requestKey && requestKey !== key) cancelCategoryRequest(requestKey)
+  requestKey = key
   demoNews.value = null
   visibleCount.value = itemsPerPage
-  activeFeedId.value = null
+  if (categoryId !== previousCategoryId) {
+    activeFeedId.value = null
+    sortOrder.value = 'desc'
+  } else if (activeFeedId.value && !feedsStore.selectedFeeds.some(feed => feed.id === activeFeedId.value)) {
+    activeFeedId.value = null
+  }
   closeModal()
-  if (!feedsStore.initialized) return
-  try { await newsService.fetchNews(feedsStore.selectedCategoryId) } catch {}
+  if (!initialized) return
+  try { await newsService.fetchNews(categoryId) } catch {}
 }, { immediate: true })
 watch(sortOrder, () => { visibleCount.value = itemsPerPage })
 watch([loadMoreTrigger, () => displayedNews.value.length], () => {
@@ -94,8 +124,67 @@ watch([loadMoreTrigger, () => displayedNews.value.length], () => {
   observer.observe(loadMoreTrigger.value)
 }, { flush: 'post' })
 
-const setSortNewest = () => { sortOrder.value = 'desc' }
-const setSortOldest = () => { sortOrder.value = 'asc' }
+function cancelSortAnimations() {
+  for (const animation of sortAnimations) animation.cancel()
+  sortAnimations = []
+  isChangingSort.value = false
+}
+
+async function animateTimelineRows(mode, generation) {
+  await nextTick()
+  if (generation !== sortAnimationGeneration) return
+  if (!themeStore.timelineAnimations || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    isChangingSort.value = false
+    return
+  }
+  const rows = timelineElement.value?.querySelectorAll('ul.timeline > li') || []
+  for (let index = 0; index < rows.length; index++) {
+    if (!rows[index].animate) continue
+    const animation = rows[index].animate(
+      [
+        { opacity: mode === 'enter' ? 0 : 0.65, transform: mode === 'enter' ? 'translateY(8px)' : 'translateY(3px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ],
+      { duration: mode === 'enter' ? 300 : 220, delay: Math.min(index, 8) * 14, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'backwards' }
+    )
+    sortAnimations.push(animation)
+  }
+  const completions = []
+  for (const animation of sortAnimations) completions.push(animation.finished)
+  await Promise.allSettled(completions)
+  if (generation === sortAnimationGeneration) {
+    sortAnimations = []
+    isChangingSort.value = false
+  }
+}
+
+// Prvi prikaz nakon promjene konteksta.
+watch([() => displayedNews.value.length, expectedKey, () => feedsStore.selectedCategoryId, activeFeedId], () => {
+  if (!pendingEntrance || !displayedNews.value.length) return
+  pendingEntrance = false
+  animateTimelineRows('enter', sortAnimationGeneration)
+}, { flush: 'post' })
+
+async function setSortOrder(order) {
+  if (sortOrder.value === order) return
+  const generation = ++sortAnimationGeneration
+  cancelSortAnimations()
+  pendingEntrance = displayedNews.value.length === 0
+  isChangingSort.value = true
+  sortOrder.value = order
+  await animateTimelineRows('sort', generation)
+}
+
+watch(() => themeStore.timelineAnimations, enabled => {
+  if (!enabled) {
+    sortAnimationGeneration++
+    cancelSortAnimations()
+  }
+})
+
+const setSortNewest = () => setSortOrder('desc')
+const setSortOldest = () => setSortOrder('asc')
+const setSortPersonal = () => setSortOrder('personal')
 const formatTime = date => Number.isFinite(Date.parse(date)) ? new Date(date).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) : ''
 const formatDate = date => {
   if (!Number.isFinite(Date.parse(date))) return ''
@@ -123,6 +212,8 @@ onMounted(async () => {
   } catch {}
 })
 onUnmounted(() => {
+  sortAnimationGeneration++
+  cancelSortAnimations()
   observer?.disconnect()
   cancelCategoryRequest(requestKey)
 })
@@ -132,11 +223,11 @@ onUnmounted(() => {
     <div class="w-full max-w-4xl mx-auto px-0 sm:px-4 py-2 sm:py-8">
     <!-- Feed Switcher — skriven u NewsCombo načinu (rangiraju se svi izvori) -->
     <div v-if="!isComboMode" class="px-3 sm:px-0">
-      <FeedSwitcher @feed-changed="handleFeedChange" />
+      <FeedSwitcher :active-feed-id="activeFeedId" @feed-changed="handleFeedChange" />
     </div>
 
     <!-- NewsCombo: traka dok algoritam još uči (trajna dok nema dovoljno podataka) -->
-    <div v-if="isComboMode && tasteStore.hydrated && !tasteStore.hasEnoughData"
+    <div v-if="isPersonalized && tasteStore.hydrated && !tasteStore.hasEnoughData"
          class="alert alert-info py-3 px-4 mx-3 sm:mx-0 mb-4 text-sm">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         stroke-width="2" class="h-5 w-5 shrink-0">
@@ -144,7 +235,7 @@ onUnmounted(() => {
           d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <span>
-        NewsCombo još uči što te zanima — za sada prikazujem sve vijesti kronološki.
+        Algoritam još uči što te zanima — za sada prikazujem sve vijesti kronološki.
         Označi nekoliko članaka srcem ili ih otvori.
       </span>
       <RouterLink to="/taste" class="btn btn-xs btn-ghost whitespace-nowrap shrink-0">Kako učim?</RouterLink>
@@ -152,23 +243,29 @@ onUnmounted(() => {
 
     <!-- head -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 px-3 sm:px-0">
-      <h2 class="text-xl font-semibold">{{ isComboMode ? 'Za tebe' : 'Najnovije vijesti' }}</h2>
-      <div class="join w-full sm:w-auto">
-        <button @click="setSortNewest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
-                :class="sortOrder === 'desc' ? 'btn-primary' : 'btn-ghost'">
-          Najnovije
+      <h2 class="text-xl font-semibold">{{ isComboMode ? 'NewsCombo' : 'Vijesti' }}</h2>
+      <div class="flex items-center gap-1 w-full sm:w-auto rounded-box bg-base-200/70 border border-base-300 p-1" role="group" aria-label="Sortiranje i osvježavanje vijesti">
+        <button v-if="!isComboMode" aria-label="Najnovije" title="Najnovije" @click="setSortNewest" class="btn btn-sm h-8 min-h-8 min-w-8 border shadow-none flex-1 sm:flex-none"
+                :class="sortOrder === 'desc' ? 'btn-primary' : 'bg-base-100 border-base-300'" :aria-pressed="sortOrder === 'desc'">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h9M3 8h7M3 12h5M17 4v16m-4-4 4 4 4-4" /></svg>
+          <span class="hidden sm:inline">Najnovije</span>
         </button>
-        <button v-if="!isComboMode" @click="setSortOldest" class="btn btn-xs sm:btn-sm flex-1 sm:flex-none join-item"
-                :class="sortOrder === 'asc' ? 'btn-primary' : 'btn-ghost'">
-          Najstarije
+        <button v-if="!isComboMode" aria-label="Najstarije" title="Najstarije" @click="setSortOldest" class="btn btn-sm h-8 min-h-8 min-w-8 border shadow-none flex-1 sm:flex-none"
+                :class="sortOrder === 'asc' ? 'btn-primary' : 'bg-base-100 border-base-300'" :aria-pressed="sortOrder === 'asc'">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h5M3 8h7M3 12h9M17 20V4m-4 4 4-4 4 4" /></svg>
+          <span class="hidden sm:inline">Najstarije</span>
         </button>
-        <button @click="refreshNews()" class="btn btn-xs sm:btn-sm flex-none join-item btn-outline">
-          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 sm:h-4 sm:w-4" fill="none"
+        <button v-if="!isComboMode && feedsStore.selectedCategoryId !== 'all'" aria-label="Za tebe" title="Za tebe" @click="setSortPersonal" class="btn btn-sm h-8 min-h-8 min-w-8 border shadow-none flex-1 sm:flex-none"
+                :class="sortOrder === 'personal' ? 'btn-primary' : 'bg-base-100 border-base-300'" :aria-pressed="sortOrder === 'personal'">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+        </button>
+        <button aria-label="Osvježi vijesti" title="Osvježi vijesti" @click="refreshNews()" class="btn btn-sm btn-square h-8 min-h-8 w-8 border border-base-300 bg-base-100 shadow-none shrink-0">
+          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          <span class="loading loading-spinner loading-xs sm:loading-sm" v-else></span>
+          <span class="loading loading-spinner loading-sm" v-else></span>
         </button>
       </div>
     </div>
@@ -221,8 +318,15 @@ onUnmounted(() => {
     </div>
 
     <!-- vremenska crta -->
-    <ul v-else-if="displayedNews.length > 0" class="timeline timeline-vertical timeline-compact max-w-full">
-      <li v-for="(news, index) in displayedNews" :key="news.guid || news.link || index">
+    <div v-else-if="displayedNews.length > 0" :key="feedsStore.selectedCategoryId" ref="timelineElement">
+    <TransitionGroup tag="ul"
+      class="timeline timeline-vertical timeline-compact max-w-full"
+      :css="themeStore.timelineAnimations && !isChangingSort"
+      :enter-active-class="themeStore.timelineAnimations ? 'motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out' : ''"
+      enter-from-class="motion-safe:opacity-0 motion-safe:translate-y-2"
+      enter-to-class="opacity-100 translate-y-0"
+      :move-class="themeStore.timelineAnimations && !isChangingSort ? 'motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out' : 'transition-none'">
+      <li v-for="(news, index) in displayedNews" :key="news.guid || `${news.feedId}:${news.link}`">
         <hr v-if="index > 0" class="bg-base-300" />
 
         <!-- datum i vrijeme -->
@@ -245,14 +349,15 @@ onUnmounted(() => {
         </div>
         <div class="timeline-end pl-1 sm:pl-4 py-2 sm:py-4 w-full" style="max-width: calc(100% - 1rem);">
           <div class="w-full">
-            <NewsCardCompact :news="news" :color-class="getTimelineColorClass(news.pubDate)" :show-score="isComboMode" @open-modal="openModal" />
+            <NewsCardCompact :news="news" :color-class="getTimelineColorClass(news.pubDate)" :show-score="isPersonalized" @open-modal="openModal" />
           </div>
         </div>
 
 
         <hr v-if="index < displayedNews.length - 1" class="bg-base-300" />
       </li>
-    </ul>
+    </TransitionGroup>
+    </div>
 
     <!-- učitaj više -->
     <div ref="loadMoreTrigger" v-if="hasMore && displayedNews.length > 0" class="flex justify-center py-8">
