@@ -12,7 +12,7 @@
     "test:pwa": "node tests/pwa-build.mjs"
   },
   "dependencies": {
-    "@iconify-icons/lucide": "^2.0.29",
+    "@iconify-icons/lucide": "^2.0.30",
     "@iconify/vue": "^5.0.5",
     "@tailwindcss/vite": "^4.3.5",
     "@vue/devtools-api": "^8.2.1",
