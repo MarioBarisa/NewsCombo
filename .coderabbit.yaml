@@ -1,4 +1,76 @@
+language: en-US
+tone_instructions: >-
+  Write professional, precise reviews in English. For each finding state the
+  severity, impact and concrete fix. Include a short code example when feasible.
+
 reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  high_level_summary_instructions: >-
+    Summarize behavior and CI changes. Explicitly identify any existing test or
+    assertion that was removed, skipped, weakened, or no longer runs in CI.
+  sequence_diagrams: false
+  poem: false
+  collapse_walkthrough: false
+  review_status: true
+  commit_status: true
+  fail_commit_status: false
   auto_review:
-    ignore_usernames:
-      - "dependabot[bot]"
+    enabled: true
+    drafts: true
+    base_branches: [".*"]
+    ignore_usernames: []
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 0
+  path_filters:
+    - "**/package-lock.json"
+    - "!**/coverage/**"
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        1. Prioritize build and test failures, broken imports or types, removed
+           exports, REST API changes and incompatible data migrations.
+        2. Check for exposed credentials, injection, broken authentication or
+           authorization, unsafe URL handling and vulnerable dependencies.
+        3. Flag logic errors, races, unhandled rejections and resource leaks.
+        Keep findings actionable and distinguish verified evidence from inference.
+    - path: "backend/**"
+      instructions: |
+        Review Express and MongoDB changes for API compatibility and route input
+        validation. Check JWT signature, expiry and session lifecycle, bcryptjs
+        password hashing, authorization scope, NoSQL injection, sanitize-html
+        coverage, RSS URL handling and redirects for SSRF, rate limits, CORS and
+        accidental disclosure of internals in errors.
+    - path: "frontend/**"
+      instructions: |
+        Review Vue, Vite and PWA changes for build, routing and regressions.
+        Check v-html and DOMPurify usage, client-exposed VITE_ configuration,
+        token persistence and service worker caching of authenticated responses.
+    - path: "**/package.json"
+      instructions: |
+        Check why each dependency change is needed, package identity, runtime
+        and peer compatibility, lifecycle scripts, license and known advisories.
+        Cite upstream evidence and state when a check could not be verified.
+    - path: "**/package-lock.json"
+      instructions: |
+        For lockfile-only changes, summarize meaningful dependency or security
+        findings in the walkthrough. Do not comment inline on generated entries.
+    - path: ".github/workflows/**"
+      instructions: |
+        Verify that workflows use least-privilege permissions, pin actions to
+        full commit SHAs and avoid running untrusted PR code with elevated
+        privileges or secrets. Check triggers, shell input, audit failure
+        handling, cache keys and artifact paths.
+    - path: ".github/dependabot.yml"
+      instructions: |
+        Verify npm coverage for backend and frontend, GitHub Actions coverage,
+        and the Thursday 04:00 Europe/Zagreb version-update schedule.
+  tools:
+    actionlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true

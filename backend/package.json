@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "test:coverage": "node -e \"require('node:fs').mkdirSync('coverage', { recursive: true })\" && node --test --experimental-test-coverage --test-coverage-include=\"**/*.js\" --test-coverage-exclude=\"**/node_modules/**\" --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/*.test.mjs"
   },
   "keywords": [],
   "author": "",
@@ -20,9 +21,9 @@
     "express": "^5.3.0",
     "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^7.8.0",
+    "mongodb": "^7.9.1",
     "rss-parser": "^3.13.0",
-    "sanitize-html": "^2.18.1"
+    "sanitize-html": "^2.18.2"
   },
   "engines": {
     "node": "^24.0.0"
