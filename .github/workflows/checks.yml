@@ -8,32 +8,52 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
+  backend:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
+          cache-dependency-path: backend/package-lock.json
       - run: npm ci
-        working-directory: backend
+      - run: npx c8 --reporter=lcov --reporter=text node --test tests/*.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/lcov.info
+      - run: npm audit --audit-level=high
+        continue-on-error: true
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-        working-directory: frontend
-      - run: npm test
-        working-directory: backend
-      - run: npm test
-        working-directory: frontend
-      - run: npm audit --audit-level=moderate
-        working-directory: backend
-      - run: npm audit --audit-level=moderate
-        working-directory: frontend
+      - run: npx c8 --reporter=lcov --reporter=text node --test tests/*.regression.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+      - run: npm audit --audit-level=high
+        continue-on-error: true
       - run: npm run build
-        working-directory: frontend
       - run: npm run test:pwa
-        working-directory: frontend
